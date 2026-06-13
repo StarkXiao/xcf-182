@@ -1,43 +1,51 @@
 <template>
-  <div class="game-container">
-    <div ref="gameContainer" id="phaser-game"></div>
-    <div class="ui-layer">
-      <div v-if="showStartScreen" class="start-screen">
-        <div class="start-content">
-          <h1 class="game-title">🍄 苔藓洞穴引路人</h1>
-          <p class="game-subtitle">点亮荧光植物，为迷路生物指引回家的路</p>
-          
-          <div class="game-rules">
-            <h3>🎮 游戏玩法</h3>
-            <ul>
-              <li>✨ 从起点（绿色）拖动到终点（紫色）</li>
-              <li>🌿 沿途的荧光植物会被点亮</li>
-              <li>🪨 避开灰色的岩石障碍物</li>
-              <li>⭐ 点亮越多植物，得分越高</li>
-            </ul>
-          </div>
-          
-          <div class="plant-legend">
-            <h3>🌱 植物图鉴</h3>
-            <div class="legend-items">
-              <div class="legend-item">
-                <span class="plant-icon moss"></span>
-                <span>苔藓 (10分)</span>
-              </div>
-              <div class="legend-item">
-                <span class="plant-icon mushroom"></span>
-                <span>荧光蘑菇 (20分)</span>
-              </div>
-              <div class="legend-item">
-                <span class="plant-icon flower"></span>
-                <span>夜光花 (30分)</span>
+  <div class="app-root">
+    <LevelEditor v-if="mode === 'editor'" @back="mode = 'start'" />
+    <div v-else class="game-container">
+      <div ref="gameContainer" id="phaser-game"></div>
+      <div class="ui-layer">
+        <div v-if="showStartScreen" class="start-screen">
+          <div class="start-content">
+            <h1 class="game-title">🍄 苔藓洞穴引路人</h1>
+            <p class="game-subtitle">点亮荧光植物，为迷路生物指引回家的路</p>
+            
+            <div class="game-rules">
+              <h3>🎮 游戏玩法</h3>
+              <ul>
+                <li>✨ 从起点（绿色）拖动到终点（紫色）</li>
+                <li>🌿 沿途的荧光植物会被点亮</li>
+                <li>🪨 避开灰色的岩石障碍物</li>
+                <li>⭐ 点亮越多植物，得分越高</li>
+              </ul>
+            </div>
+            
+            <div class="plant-legend">
+              <h3>🌱 植物图鉴</h3>
+              <div class="legend-items">
+                <div class="legend-item">
+                  <span class="plant-icon moss"></span>
+                  <span>苔藓 (10分)</span>
+                </div>
+                <div class="legend-item">
+                  <span class="plant-icon mushroom"></span>
+                  <span>荧光蘑菇 (20分)</span>
+                </div>
+                <div class="legend-item">
+                  <span class="plant-icon flower"></span>
+                  <span>夜光花 (30分)</span>
+                </div>
               </div>
             </div>
+            
+            <div class="button-group">
+              <button @click="startGame" class="start-btn">
+                🚀 开始冒险
+              </button>
+              <button @click="openEditor" class="editor-btn">
+                🎨 关卡编辑器
+              </button>
+            </div>
           </div>
-          
-          <button @click="startGame" class="start-btn">
-            🚀 开始冒险
-          </button>
         </div>
       </div>
     </div>
@@ -47,19 +55,26 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
 import { Game } from './game/Game.js'
+import LevelEditor from './components/LevelEditor.vue'
 
+const mode = ref('start')
 const gameContainer = ref(null)
 const showStartScreen = ref(true)
 let gameInstance = null
 
 const startGame = () => {
   showStartScreen.value = false
+  mode.value = 'game'
   
   setTimeout(() => {
     if (gameContainer.value) {
       gameInstance = new Game(gameContainer.value)
     }
   }, 100)
+}
+
+const openEditor = () => {
+  mode.value = 'editor'
 }
 
 onMounted(() => {
@@ -199,6 +214,14 @@ onUnmounted(() => {
   box-shadow: 0 0 10px #3b82f6;
 }
 
+.button-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 20px;
+  align-items: center;
+}
+
 .start-btn {
   background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
   color: white;
@@ -210,7 +233,7 @@ onUnmounted(() => {
   cursor: pointer;
   transition: all 0.3s ease;
   box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
-  margin-top: 20px;
+  min-width: 240px;
 }
 
 .start-btn:hover {
@@ -219,6 +242,29 @@ onUnmounted(() => {
 }
 
 .start-btn:active {
+  transform: translateY(0);
+}
+
+.editor-btn {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  border: none;
+  padding: 12px 40px;
+  font-size: 1rem;
+  font-weight: bold;
+  border-radius: 50px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+  min-width: 240px;
+}
+
+.editor-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 25px rgba(16, 185, 129, 0.6);
+}
+
+.editor-btn:active {
   transform: translateY(0);
 }
 
