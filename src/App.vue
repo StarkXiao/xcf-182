@@ -1,0 +1,247 @@
+<template>
+  <div class="game-container">
+    <div ref="gameContainer" id="phaser-game"></div>
+    <div class="ui-layer">
+      <div v-if="showStartScreen" class="start-screen">
+        <div class="start-content">
+          <h1 class="game-title">🍄 苔藓洞穴引路人</h1>
+          <p class="game-subtitle">点亮荧光植物，为迷路生物指引回家的路</p>
+          
+          <div class="game-rules">
+            <h3>🎮 游戏玩法</h3>
+            <ul>
+              <li>✨ 从起点（绿色）拖动到终点（紫色）</li>
+              <li>🌿 沿途的荧光植物会被点亮</li>
+              <li>🪨 避开灰色的岩石障碍物</li>
+              <li>⭐ 点亮越多植物，得分越高</li>
+            </ul>
+          </div>
+          
+          <div class="plant-legend">
+            <h3>🌱 植物图鉴</h3>
+            <div class="legend-items">
+              <div class="legend-item">
+                <span class="plant-icon moss"></span>
+                <span>苔藓 (10分)</span>
+              </div>
+              <div class="legend-item">
+                <span class="plant-icon mushroom"></span>
+                <span>荧光蘑菇 (20分)</span>
+              </div>
+              <div class="legend-item">
+                <span class="plant-icon flower"></span>
+                <span>夜光花 (30分)</span>
+              </div>
+            </div>
+          </div>
+          
+          <button @click="startGame" class="start-btn">
+            🚀 开始冒险
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { ref, onMounted, onUnmounted } from 'vue'
+import { Game } from './game/Game.js'
+
+const gameContainer = ref(null)
+const showStartScreen = ref(true)
+let gameInstance = null
+
+const startGame = () => {
+  showStartScreen.value = false
+  
+  setTimeout(() => {
+    if (gameContainer.value) {
+      gameInstance = new Game(gameContainer.value)
+    }
+  }, 100)
+}
+
+onMounted(() => {
+})
+
+onUnmounted(() => {
+  if (gameInstance) {
+    gameInstance.destroy()
+    gameInstance = null
+  }
+})
+</script>
+
+<style scoped>
+.start-screen {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #0a0a1a 0%, #1a1a3a 50%, #0a0a1a 100%);
+  z-index: 1000;
+  overflow-y: auto;
+}
+
+.start-content {
+  text-align: center;
+  padding: 40px;
+  max-width: 500px;
+  width: 90%;
+  animation: fadeInUp 0.8s ease-out;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.game-title {
+  font-size: 2.5rem;
+  color: #60a5fa;
+  margin-bottom: 10px;
+  text-shadow: 0 0 20px rgba(96, 165, 250, 0.5);
+  animation: glow 2s ease-in-out infinite alternate;
+}
+
+@keyframes glow {
+  from {
+    text-shadow: 0 0 10px rgba(96, 165, 250, 0.5),
+                 0 0 20px rgba(96, 165, 250, 0.3);
+  }
+  to {
+    text-shadow: 0 0 20px rgba(96, 165, 250, 0.8),
+                 0 0 40px rgba(96, 165, 250, 0.5),
+                 0 0 60px rgba(147, 197, 253, 0.3);
+  }
+}
+
+.game-subtitle {
+  font-size: 1.1rem;
+  color: #a78bfa;
+  margin-bottom: 30px;
+  opacity: 0.9;
+}
+
+.game-rules, .plant-legend {
+  background: rgba(13, 17, 23, 0.8);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 20px;
+  border: 1px solid rgba(96, 165, 250, 0.3);
+  text-align: left;
+}
+
+.game-rules h3, .plant-legend h3 {
+  color: #fbbf24;
+  margin-bottom: 15px;
+  font-size: 1.2rem;
+  text-align: center;
+}
+
+.game-rules ul {
+  list-style: none;
+  padding: 0;
+}
+
+.game-rules li {
+  color: #e2e8f0;
+  padding: 8px 0;
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+.legend-items {
+  display: flex;
+  justify-content: space-around;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #e2e8f0;
+  font-size: 0.9rem;
+}
+
+.plant-icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.plant-icon.moss {
+  background: #4ade80;
+  box-shadow: 0 0 10px #22c55e;
+}
+
+.plant-icon.mushroom {
+  background: #f472b6;
+  box-shadow: 0 0 10px #ec4899;
+}
+
+.plant-icon.flower {
+  background: #60a5fa;
+  box-shadow: 0 0 10px #3b82f6;
+}
+
+.start-btn {
+  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+  color: white;
+  border: none;
+  padding: 15px 50px;
+  font-size: 1.2rem;
+  font-weight: bold;
+  border-radius: 50px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+  margin-top: 20px;
+}
+
+.start-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 25px rgba(59, 130, 246, 0.6);
+}
+
+.start-btn:active {
+  transform: translateY(0);
+}
+
+@media (max-width: 600px) {
+  .game-title {
+    font-size: 1.8rem;
+  }
+  
+  .game-subtitle {
+    font-size: 1rem;
+  }
+  
+  .start-content {
+    padding: 20px;
+  }
+  
+  .game-rules, .plant-legend {
+    padding: 15px;
+  }
+  
+  .legend-items {
+    flex-direction: column;
+    align-items: center;
+  }
+}
+</style>
