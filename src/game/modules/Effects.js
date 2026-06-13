@@ -1,11 +1,20 @@
+const DEFAULT_EFFECTS_THEME = {
+  bgTints: [0x60a5fa, 0xa78bfa, 0xf472b6, 0x4ade80],
+  ambientGlow: 0x1e3a5f
+}
+
 export class Effects {
   constructor(scene) {
     this.scene = scene
     this.particleSystems = []
     this.backgroundParticles = null
+    this.theme = { ...DEFAULT_EFFECTS_THEME }
   }
 
-  init() {
+  init(themeColors = null) {
+    if (themeColors) {
+      this.theme = { ...DEFAULT_EFFECTS_THEME, ...themeColors }
+    }
     this.createSparkleTexture()
     this.createBackgroundParticles()
     this.createAmbientGlow()
@@ -43,7 +52,7 @@ export class Effects {
       alpha: { start: 0, end: 0.6 },
       lifespan: { min: 2000, max: 4000 },
       frequency: 200,
-      tint: [0x60a5fa, 0xa78bfa, 0xf472b6, 0x4ade80],
+      tint: this.theme.bgTints,
       quantity: 1,
       blendMode: 'ADD'
     })
@@ -57,7 +66,7 @@ export class Effects {
     const height = this.scene.game.config.height
     
     const glow = this.scene.add.graphics()
-    glow.fillGradientStyle(0x1e3a5f, 0x1e3a5f, 0x0f172a, 0x0f172a, 0.3)
+    glow.fillGradientStyle(this.theme.ambientGlow, this.theme.ambientGlow, 0x0f172a, 0x0f172a, 0.3)
     glow.fillRect(0, 0, width, height)
     glow.setDepth(-200)
     

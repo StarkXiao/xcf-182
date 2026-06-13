@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
 import { GameScene } from './scenes/GameScene.js'
+import { getActiveThemeColors } from './data/dailyChallenge.js'
 
 export class Game {
   constructor(container, options = {}) {
@@ -15,11 +16,15 @@ export class Game {
     
     const gameScene = new GameScene()
     
+    const themeColors = getActiveThemeColors()
+    gameScene.setThemeColors(themeColors)
+    
     if (this.options.isDailyChallenge) {
       gameScene.setDailyChallengeConfig({
         isDailyChallenge: true,
         dailyLevel: this.options.dailyLevel,
-        onDailyComplete: this.options.onDailyComplete
+        onDailyComplete: this.options.onDailyComplete,
+        onBackToStart: this.options.onBackToStart
       })
     }
     
@@ -44,15 +49,6 @@ export class Game {
     }
     
     this.game = new Phaser.Game(config)
-    
-    if (this.options.isDailyChallenge && this.options.dailyLevel) {
-      this.game.events.once('ready', () => {
-        const scene = this.game.scene.getScene('GameScene')
-        if (scene && scene.levelMap) {
-          scene.levelMap.setDailyLevel(this.options.dailyLevel)
-        }
-      })
-    }
     
     window.addEventListener('resize', () => this.handleResize())
   }

@@ -265,6 +265,10 @@ function selectSkin(skin) {
 
 function startChallenge() {
   if (!dailyLevel.value) return
+  if (isTodayCompleted()) {
+    todayCompleted.value = true
+    return
+  }
   emit('startChallenge', dailyLevel.value)
 }
 

@@ -90,6 +90,10 @@ const openDailyChallenge = () => {
 }
 
 const onStartDailyChallenge = (levelData) => {
+  if (isTodayCompleted()) {
+    return
+  }
+
   dailyChallengeLevel = levelData
   showStartScreen.value = false
   mode.value = 'game'
@@ -100,11 +104,23 @@ const onStartDailyChallenge = (levelData) => {
         isDailyChallenge: true,
         dailyLevel: levelData,
         onDailyComplete: (score) => {
-          const state = markTodayCompleted(score)
+          markTodayCompleted(score)
+        },
+        onBackToStart: () => {
+          backToStart()
         }
       })
     }
   }, 100)
+}
+
+const backToStart = () => {
+  if (gameInstance) {
+    gameInstance.destroy()
+    gameInstance = null
+  }
+  mode.value = 'start'
+  showStartScreen.value = true
 }
 
 const openEditor = () => {

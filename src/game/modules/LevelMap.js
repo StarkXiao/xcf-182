@@ -1,7 +1,21 @@
 import { LEVELS } from '../data/levels.js'
 
+const DEFAULT_THEME = {
+  gridBg: 0x0d1117,
+  gridBgStroke: 0x1e3a5f,
+  gridCell: 0x1a1f2e,
+  gridCellStroke: 0x2d3748,
+  obstacleFill: 0x374151,
+  obstacleStroke: 0x4b5563,
+  obstacleSpark: 0x6b7280,
+  startFill: 0x10b981,
+  startStroke: 0x34d399,
+  endFill: 0x8b5cf6,
+  endStroke: 0xa78bfa
+}
+
 export class LevelMap {
-  constructor(scene) {
+  constructor(scene, themeColors = null) {
     this.scene = scene
     this.currentLevel = null
     this.gridCells = []
@@ -9,6 +23,7 @@ export class LevelMap {
     this.offsetX = 0
     this.offsetY = 0
     this.dailyLevel = null
+    this.theme = { ...DEFAULT_THEME, ...(themeColors || {}) }
   }
 
   setDailyLevel(level) {
@@ -77,10 +92,10 @@ export class LevelMap {
       this.offsetY + (rows * this.cellSize) / 2,
       width,
       height,
-      0x0d1117,
+      this.theme.gridBg,
       0.8
     )
-    bg.setStrokeStyle(2, 0x1e3a5f, 1)
+    bg.setStrokeStyle(2, this.theme.gridBgStroke, 1)
     
     this.scene.tweens.add({
       targets: bg,
@@ -107,10 +122,10 @@ export class LevelMap {
           x, y,
           this.cellSize - 4,
           this.cellSize - 4,
-          0x1a1f2e,
+          this.theme.gridCell,
           0.6
         )
-        cellBg.setStrokeStyle(1, 0x2d3748, 0.5)
+        cellBg.setStrokeStyle(1, this.theme.gridCellStroke, 0.5)
         cellBg.setData('cell', cell)
         cellBg.setInteractive({ useHandCursor: true })
         
@@ -126,8 +141,8 @@ export class LevelMap {
       const x = this.offsetX + obs.col * this.cellSize + this.cellSize / 2
       const y = this.offsetY + obs.row * this.cellSize + this.cellSize / 2
       
-      const rock = this.scene.add.circle(x, y, this.cellSize * 0.35, 0x374151, 0.9)
-      rock.setStrokeStyle(2, 0x4b5563, 1)
+      const rock = this.scene.add.circle(x, y, this.cellSize * 0.35, this.theme.obstacleFill, 0.9)
+      rock.setStrokeStyle(2, this.theme.obstacleStroke, 1)
       
       this.scene.tweens.add({
         targets: rock,
@@ -146,7 +161,7 @@ export class LevelMap {
         alpha: { start: 0.5, end: 0 },
         lifespan: 1000,
         frequency: 500,
-        tint: 0x6b7280
+        tint: this.theme.obstacleSpark
       })
       sparkles.stop()
       this.scene.time.addEvent({
@@ -163,8 +178,8 @@ export class LevelMap {
     const startX = this.offsetX + start.col * this.cellSize + this.cellSize / 2
     const startY = this.offsetY + start.row * this.cellSize + this.cellSize / 2
     
-    const startMarker = this.scene.add.circle(startX, startY, this.cellSize * 0.4, 0x10b981, 0.8)
-    startMarker.setStrokeStyle(3, 0x34d399, 1)
+    const startMarker = this.scene.add.circle(startX, startY, this.cellSize * 0.4, this.theme.startFill, 0.8)
+    startMarker.setStrokeStyle(3, this.theme.startStroke, 1)
     
     const startText = this.scene.add.text(startX, startY, '起', {
       fontSize: '20px',
@@ -186,8 +201,8 @@ export class LevelMap {
     const endX = this.offsetX + end.col * this.cellSize + this.cellSize / 2
     const endY = this.offsetY + end.row * this.cellSize + this.cellSize / 2
     
-    const endMarker = this.scene.add.circle(endX, endY, this.cellSize * 0.4, 0x8b5cf6, 0.8)
-    endMarker.setStrokeStyle(3, 0xa78bfa, 1)
+    const endMarker = this.scene.add.circle(endX, endY, this.cellSize * 0.4, this.theme.endFill, 0.8)
+    endMarker.setStrokeStyle(3, this.theme.endStroke, 1)
     
     const endText = this.scene.add.text(endX, endY, '终', {
       fontSize: '20px',

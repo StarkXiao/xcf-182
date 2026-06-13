@@ -341,6 +341,78 @@ export const THEME_SKIN_INFO = {
   crystal: { name: '水晶主题', icon: '💎', description: '连续30天解锁 · 水晶折射背景', colors: { primary: '#f472b6', secondary: '#22d3ee', accent: '#4ade80' } }
 }
 
+const THEME_GAME_CONFIGS = {
+  default: {
+    bgTints: [0x60a5fa, 0xa78bfa, 0xf472b6, 0x4ade80],
+    ambientGlow: 0x1e3a5f,
+    gridBg: 0x0d1117,
+    gridBgStroke: 0x1e3a5f,
+    gridCell: 0x1a1f2e,
+    gridCellStroke: 0x2d3748,
+    obstacleFill: 0x374151,
+    obstacleStroke: 0x4b5563,
+    obstacleSpark: 0x6b7280,
+    startFill: 0x10b981,
+    startStroke: 0x34d399,
+    endFill: 0x8b5cf6,
+    endStroke: 0xa78bfa
+  },
+  aurora: {
+    bgTints: [0x34d399, 0x8b5cf6, 0x06b6d4, 0x22d3ee],
+    ambientGlow: 0x0f3d3e,
+    gridBg: 0x0a1a1a,
+    gridBgStroke: 0x0d4f4f,
+    gridCell: 0x122828,
+    gridCellStroke: 0x1a4a4a,
+    obstacleFill: 0x2d4a4a,
+    obstacleStroke: 0x3d6a6a,
+    obstacleSpark: 0x34d399,
+    startFill: 0x06b6d4,
+    startStroke: 0x22d3ee,
+    endFill: 0x8b5cf6,
+    endStroke: 0xa78bfa
+  },
+  starry: {
+    bgTints: [0xfbbf24, 0x60a5fa, 0xa78bfa, 0xfde68a],
+    ambientGlow: 0x1a1a3f,
+    gridBg: 0x0d0d1a,
+    gridBgStroke: 0x2a2a5f,
+    gridCell: 0x1a1a2e,
+    gridCellStroke: 0x2d2d4a,
+    obstacleFill: 0x373751,
+    obstacleStroke: 0x4b4b66,
+    obstacleSpark: 0xfbbf24,
+    startFill: 0xfbbf24,
+    startStroke: 0xfde68a,
+    endFill: 0x60a5fa,
+    endStroke: 0x93c5fd
+  },
+  crystal: {
+    bgTints: [0xf472b6, 0x22d3ee, 0x4ade80, 0xf9a8d4],
+    ambientGlow: 0x2a1030,
+    gridBg: 0x100a15,
+    gridBgStroke: 0x4a1a5f,
+    gridCell: 0x1a1028,
+    gridCellStroke: 0x2d1a48,
+    obstacleFill: 0x3d2040,
+    obstacleStroke: 0x5a3060,
+    obstacleSpark: 0xf472b6,
+    startFill: 0x22d3ee,
+    startStroke: 0x67e8f9,
+    endFill: 0xf472b6,
+    endStroke: 0xf9a8d4
+  }
+}
+
+function getActiveThemeColors() {
+  const savedSkin = localStorage.getItem('moss_cave_active_skin') || 'default'
+  return THEME_GAME_CONFIGS[savedSkin] || THEME_GAME_CONFIGS.default
+}
+
+function getActiveSkinId() {
+  return localStorage.getItem('moss_cave_active_skin') || 'default'
+}
+
 export {
   generateDailyLevel,
   loadState,
@@ -350,5 +422,7 @@ export {
   getTodayStr,
   getChallengeState,
   getDaysUntilNextStreak,
-  recalculateStreak
+  recalculateStreak,
+  getActiveThemeColors,
+  getActiveSkinId
 }

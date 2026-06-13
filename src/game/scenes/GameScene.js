@@ -21,12 +21,20 @@ export class GameScene extends Phaser.Scene {
     this.isDailyChallenge = false
     this.dailyLevel = null
     this.onDailyComplete = null
+    this.onBackToStart = null
+    this.dailyCompleted = false
+    this.themeColors = null
   }
 
   setDailyChallengeConfig(config) {
     this.isDailyChallenge = config.isDailyChallenge || false
     this.dailyLevel = config.dailyLevel || null
     this.onDailyComplete = config.onDailyComplete || null
+    this.onBackToStart = config.onBackToStart || null
+  }
+
+  setThemeColors(colors) {
+    this.themeColors = colors
   }
 
   preload() {
@@ -34,14 +42,18 @@ export class GameScene extends Phaser.Scene {
 
   create() {
     this.effects = new Effects(this)
-    this.effects.init()
+    this.effects.init(this.themeColors)
     
-    this.levelMap = new LevelMap(this)
+    this.levelMap = new LevelMap(this, this.themeColors)
     this.plantState = new PlantState(this, this.levelMap)
     this.pathJudge = new PathJudge(this, this.levelMap, this.plantState)
     this.hintPanel = new HintPanel(this)
     
     this.effects.setLevelMap(this.levelMap)
+    
+    if (this.isDailyChallenge && this.dailyLevel) {
+      this.levelMap.setDailyLevel(this.dailyLevel)
+    }
     
     this.hintPanel.init()
     
@@ -172,6 +184,9 @@ export class GameScene extends Phaser.Scene {
     if (this.isAnimating) return
     
     this.isAnimating = true
+    if (this.isDailyChallenge) {
+      this.dailyCompleted = true
+    }
     this.hintPanel.incrementAttempts()
     
     const litCount = this.plantState.getLitCount()
@@ -216,6 +231,7 @@ export class GameScene extends Phaser.Scene {
 
   resetLevel() {
     if (this.isAnimating) return
+    if (this.isDailyChallenge && this.dailyCompleted) return
     
     this.pathJudge.resetPath()
     
@@ -315,6 +331,11 @@ export class GameScene extends Phaser.Scene {
           panel.destroy()
           if (this.onDailyComplete) {
             this.onDailyComplete(score)
+          }
+          if (this.onBackToStart) {
+            this.time.delayedCall(300, () => {
+              this.onBackToStart()
+            })
           }
         }
       })

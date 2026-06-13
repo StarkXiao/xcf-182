@@ -212,6 +212,17 @@ export class HintPanel {
   }
 
   showHint() {
+    if (this.isDailyChallengeMode) {
+      if (this.hintText) {
+        this.hintText.setText('仔细观察路线，避开障碍物，点亮更多植物获得高分！')
+      }
+      this.show()
+      if (this.onShowHint) {
+        this.onShowHint()
+      }
+      return
+    }
+
     const levelIndex = this.getCurrentLevelIndex()
     if (levelIndex >= LEVELS.length) return
     
