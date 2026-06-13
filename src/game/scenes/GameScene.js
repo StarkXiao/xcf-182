@@ -68,8 +68,18 @@ export class GameScene extends Phaser.Scene {
       this.levelMap.render()
       this.plantState.init()
       this.pathJudge.init()
+      
+      const hasExistingScore = this.hintPanel && this.hintPanel.getScore() > 0
+      this.hintPanel.init(hasExistingScore)
       this.hintPanel.setCurrentLevelIndex(levelIndex)
       this.hintPanel.reset()
+      
+      this.hintPanel.onReset = () => this.resetLevel()
+      this.hintPanel.onShowHint = () => {
+        if (this.pathJudge) {
+          this.pathJudge.showHint()
+        }
+      }
       
       this.pathJudge.onPathComplete = (path) => this.onPathComplete(path)
       this.pathJudge.onPathInvalid = () => this.onPathInvalid()
@@ -205,6 +215,7 @@ export class GameScene extends Phaser.Scene {
     this.hintPanel.showGameComplete(this.totalScore, () => {
       this.currentLevelIndex = 0
       this.totalScore = 0
+      this.hintPanel.score = 0
       this.loadLevel(0)
     })
   }

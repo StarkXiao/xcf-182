@@ -13,12 +13,24 @@ export class HintPanel {
     this.score = 0
   }
 
-  init() {
+  init(preserveScore = false) {
     this.attempts = 0
-    this.score = 0
+    if (!preserveScore) {
+      this.score = 0
+    }
     this.createTopBar()
     this.createHintPanel()
     this.createControlButtons()
+    this.updateScoreDisplay()
+  }
+
+  updateScoreDisplay() {
+    if (this.scoreText) {
+      this.scoreText.setText(`⭐ ${this.score} 分`)
+    }
+    if (this.attemptsText) {
+      this.attemptsText.setText(`尝试: ${this.attempts} 次`)
+    }
   }
 
   createTopBar() {
