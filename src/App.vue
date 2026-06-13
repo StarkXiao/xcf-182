@@ -1,6 +1,11 @@
 <template>
   <div class="app-root">
     <LevelEditor v-if="mode === 'editor'" @back="mode = 'start'" />
+    <DailyChallenge
+      v-else-if="mode === 'daily'"
+      @back="mode = 'start'"
+      @startChallenge="onStartDailyChallenge"
+    />
     <div v-else class="game-container">
       <div ref="gameContainer" id="phaser-game"></div>
       <div class="ui-layer">
@@ -41,6 +46,9 @@
               <button @click="startGame" class="start-btn">
                 🚀 开始冒险
               </button>
+              <button @click="openDailyChallenge" class="daily-btn">
+                🔥 每日挑战
+              </button>
               <button @click="openEditor" class="editor-btn">
                 🎨 关卡编辑器
               </button>
@@ -56,19 +64,45 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { Game } from './game/Game.js'
 import LevelEditor from './components/LevelEditor.vue'
+import DailyChallenge from './components/DailyChallenge.vue'
+import { generateDailyLevel, isTodayCompleted, markTodayCompleted } from './game/data/dailyChallenge.js'
 
 const mode = ref('start')
 const gameContainer = ref(null)
 const showStartScreen = ref(true)
 let gameInstance = null
+let dailyChallengeLevel = null
 
 const startGame = () => {
+  showStartScreen.value = false
+  mode.value = 'game'
+  dailyChallengeLevel = null
+  
+  setTimeout(() => {
+    if (gameContainer.value) {
+      gameInstance = new Game(gameContainer.value, { isDailyChallenge: false })
+    }
+  }, 100)
+}
+
+const openDailyChallenge = () => {
+  mode.value = 'daily'
+}
+
+const onStartDailyChallenge = (levelData) => {
+  dailyChallengeLevel = levelData
   showStartScreen.value = false
   mode.value = 'game'
   
   setTimeout(() => {
     if (gameContainer.value) {
-      gameInstance = new Game(gameContainer.value)
+      gameInstance = new Game(gameContainer.value, {
+        isDailyChallenge: true,
+        dailyLevel: levelData,
+        onDailyComplete: (score) => {
+          const state = markTodayCompleted(score)
+        }
+      })
     }
   }, 100)
 }
@@ -266,6 +300,39 @@ onUnmounted(() => {
 
 .editor-btn:active {
   transform: translateY(0);
+}
+
+.daily-btn {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: white;
+  border: none;
+  padding: 15px 50px;
+  font-size: 1.2rem;
+  font-weight: bold;
+  border-radius: 50px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(245, 158, 11, 0.4);
+  min-width: 240px;
+  animation: fireGlow 2s ease-in-out infinite alternate;
+}
+
+.daily-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 25px rgba(245, 158, 11, 0.6);
+}
+
+.daily-btn:active {
+  transform: translateY(0);
+}
+
+@keyframes fireGlow {
+  from {
+    box-shadow: 0 4px 15px rgba(245, 158, 11, 0.4);
+  }
+  to {
+    box-shadow: 0 4px 25px rgba(245, 158, 11, 0.7), 0 0 40px rgba(251, 191, 36, 0.3);
+  }
 }
 
 @media (max-width: 600px) {

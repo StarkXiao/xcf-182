@@ -8,9 +8,20 @@ export class LevelMap {
     this.cellSize = 0
     this.offsetX = 0
     this.offsetY = 0
+    this.dailyLevel = null
+  }
+
+  setDailyLevel(level) {
+    this.dailyLevel = level
   }
 
   loadLevel(levelIndex) {
+    if (this.dailyLevel) {
+      this.currentLevel = JSON.parse(JSON.stringify(this.dailyLevel))
+      this.createGrid()
+      return this.currentLevel
+    }
+
     if (levelIndex >= LEVELS.length) {
       return null
     }

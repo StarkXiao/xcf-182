@@ -18,6 +18,15 @@ export class GameScene extends Phaser.Scene {
     this.creature = null
     this.isAnimating = false
     this.totalScore = 0
+    this.isDailyChallenge = false
+    this.dailyLevel = null
+    this.onDailyComplete = null
+  }
+
+  setDailyChallengeConfig(config) {
+    this.isDailyChallenge = config.isDailyChallenge || false
+    this.dailyLevel = config.dailyLevel || null
+    this.onDailyComplete = config.onDailyComplete || null
   }
 
   preload() {
@@ -41,6 +50,10 @@ export class GameScene extends Phaser.Scene {
       if (this.pathJudge) {
         this.pathJudge.showHint()
       }
+    }
+    
+    if (this.isDailyChallenge) {
+      this.hintPanel.setDailyChallengeMode(true)
     }
     
     this.loadLevel(this.currentLevelIndex)
@@ -74,6 +87,10 @@ export class GameScene extends Phaser.Scene {
       this.hintPanel.setCurrentLevelIndex(levelIndex)
       this.hintPanel.reset()
       
+      if (this.isDailyChallenge) {
+        this.hintPanel.setDailyChallengeMode(true)
+      }
+      
       this.hintPanel.onReset = () => this.resetLevel()
       this.hintPanel.onShowHint = () => {
         if (this.pathJudge) {
@@ -98,9 +115,10 @@ export class GameScene extends Phaser.Scene {
     const width = this.game.config.width
     const height = this.game.config.height
     
-    const intro = this.add.text(width / 2, height / 2 - 100, level.name, {
+    const titleText = this.isDailyChallenge ? `${level.name} 🔥` : level.name
+    const intro = this.add.text(width / 2, height / 2 - 100, titleText, {
       fontSize: '32px',
-      fill: '#60a5fa',
+      fill: this.isDailyChallenge ? '#fbbf24' : '#60a5fa',
       fontStyle: 'bold'
     })
     intro.setOrigin(0.5)
@@ -116,9 +134,12 @@ export class GameScene extends Phaser.Scene {
     desc.setDepth(200)
     desc.setAlpha(0)
     
-    const instruction = this.add.text(width / 2, height / 2, '从起点拖动到终点，点亮沿途的植物', {
+    const challengeLabel = this.isDailyChallenge
+      ? '🔥 每日挑战 · 完成后不可重玩'
+      : '从起点拖动到终点，点亮沿途的植物'
+    const instruction = this.add.text(width / 2, height / 2, challengeLabel, {
       fontSize: '14px',
-      fill: '#9ca3af'
+      fill: this.isDailyChallenge ? '#fbbf24' : '#9ca3af'
     })
     instruction.setOrigin(0.5)
     instruction.setDepth(200)
@@ -166,11 +187,15 @@ export class GameScene extends Phaser.Scene {
     
     this.effects.animateCreatureAlongPath(this.creature, path, () => {
       this.time.delayedCall(500, () => {
-        this.hintPanel.showLevelComplete(
-          this.currentLevelIndex,
-          levelScore,
-          () => this.nextLevel()
-        )
+        if (this.isDailyChallenge) {
+          this.showDailyChallengeComplete(levelScore)
+        } else {
+          this.hintPanel.showLevelComplete(
+            this.currentLevelIndex,
+            levelScore,
+            () => this.nextLevel()
+          )
+        }
         this.isAnimating = false
       })
     })
@@ -207,6 +232,128 @@ export class GameScene extends Phaser.Scene {
         angle: 0,
         duration: 300,
         ease: 'Cubic.out'
+      })
+    }
+  }
+
+  showDailyChallengeComplete(score) {
+    const width = this.game.config.width
+    const height = this.game.config.height
+    
+    const panel = this.add.container(0, 0)
+    panel.setDepth(400)
+    
+    const bg = this.add.rectangle(
+      width / 2, height / 2,
+      width * 0.85, 350,
+      0x0d1117, 0.95
+    )
+    bg.setStrokeStyle(3, 0xfbbf24, 0.8)
+    panel.add(bg)
+    
+    const title = this.add.text(width / 2, height / 2 - 130, '🔥 每日挑战完成！', {
+      fontSize: '28px',
+      fill: '#fbbf24',
+      fontStyle: 'bold'
+    })
+    title.setOrigin(0.5)
+    panel.add(title)
+    
+    const scoreInfo = this.add.text(width / 2, height / 2 - 75, `获得 ${score} 分`, {
+      fontSize: '22px',
+      fill: '#22c55e',
+      fontStyle: 'bold'
+    })
+    scoreInfo.setOrigin(0.5)
+    panel.add(scoreInfo)
+    
+    const subtitle = this.add.text(width / 2, height / 2 - 35, '今日挑战已完成，明天再来！', {
+      fontSize: '16px',
+      fill: '#e2e8f0',
+      align: 'center'
+    })
+    subtitle.setOrigin(0.5)
+    panel.add(subtitle)
+    
+    const noReplay = this.add.text(width / 2, height / 2, '每日挑战仅可完成一次，不可重玩', {
+      fontSize: '13px',
+      fill: '#f87171'
+    })
+    noReplay.setOrigin(0.5)
+    panel.add(noReplay)
+    
+    const streakInfo = this.add.text(width / 2, height / 2 + 35, '保持连续打卡，解锁更多奖励！', {
+      fontSize: '14px',
+      fill: '#fbbf24'
+    })
+    streakInfo.setOrigin(0.5)
+    panel.add(streakInfo)
+    
+    const rewardHint = this.add.text(width / 2, height / 2 + 65, '🌟 连续7天 · 特殊徽章 + 主题皮肤', {
+      fontSize: '13px',
+      fill: '#a78bfa'
+    })
+    rewardHint.setOrigin(0.5)
+    panel.add(rewardHint)
+    
+    const closeBtn = this.add.text(width / 2, height / 2 + 110, '✓ 确认', {
+      fontSize: '18px',
+      fill: '#fbbf24',
+      fontStyle: 'bold',
+      backgroundColor: '#92400e',
+      padding: { x: 30, y: 12 }
+    })
+    closeBtn.setOrigin(0.5)
+    closeBtn.setInteractive({ useHandCursor: true })
+    
+    closeBtn.on('pointerdown', () => {
+      this.tweens.add({
+        targets: panel,
+        alpha: 0,
+        duration: 300,
+        onComplete: () => {
+          panel.destroy()
+          if (this.onDailyComplete) {
+            this.onDailyComplete(score)
+          }
+        }
+      })
+    })
+    
+    closeBtn.on('pointerover', () => {
+      closeBtn.setBackgroundColor('#b45309')
+    })
+    closeBtn.on('pointerout', () => {
+      closeBtn.setBackgroundColor('#92400e')
+    })
+    
+    panel.add(closeBtn)
+    
+    panel.setAlpha(0)
+    this.tweens.add({
+      targets: panel,
+      alpha: 1,
+      scale: { from: 0.8, to: 1 },
+      duration: 500,
+      ease: 'Back.out'
+    })
+    
+    for (let i = 0; i < 20; i++) {
+      this.time.delayedCall(i * 80, () => {
+        const x = Math.random() * width
+        const y = Math.random() * height
+        const color = [0xfbbf24, 0xf97316, 0xef4444, 0xa78bfa][Math.floor(Math.random() * 4)]
+        
+        this.add.particles(x, y, 'sparkle', {
+          speed: { min: 50, max: 150 },
+          angle: { min: 0, max: 360 },
+          scale: { start: 0.5, end: 0 },
+          alpha: { start: 1, end: 0 },
+          lifespan: 1000,
+          tint: color,
+          quantity: 10,
+          duration: 300
+        })
       })
     }
   }

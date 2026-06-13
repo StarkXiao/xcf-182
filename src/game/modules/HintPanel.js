@@ -11,6 +11,11 @@ export class HintPanel {
     this.isVisible = false
     this.attempts = 0
     this.score = 0
+    this.isDailyChallengeMode = false
+  }
+
+  setDailyChallengeMode(enabled) {
+    this.isDailyChallengeMode = enabled
   }
 
   init(preserveScore = false) {
@@ -176,6 +181,14 @@ export class HintPanel {
   }
 
   updateLevelInfo(levelIndex) {
+    if (this.isDailyChallengeMode) {
+      if (this.levelInfo) {
+        this.levelInfo.setText(`🔥 每日挑战`)
+        this.levelInfo.setColor('#fbbf24')
+      }
+      return
+    }
+
     if (levelIndex >= LEVELS.length) return
     
     const level = LEVELS[levelIndex]
