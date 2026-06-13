@@ -248,12 +248,12 @@
           <h3>📖 使用说明</h3>
           <div class="instructions">
             <p><strong>1.</strong> 先设置网格大小（3-15行/列）</p>
-            <p><strong>2.</strong> 选择「起点」工具，点击格子设置起点</p>
-            <p><strong>3.</strong> 选择「终点」工具，点击格子设置终点</p>
-            <p><strong>4.</strong> 选择植物或障碍工具，点击/拖拽放置</p>
-            <p><strong>5.</strong> 绘制正确路径：点击开始，再依次点击格子</p>
-            <p><strong>6.</strong> 点击「预览试玩」测试关卡</p>
-            <p><strong>7.</strong> 导出 JSON 保存关卡</p>
+            <p><strong>2.</strong> 选择「起点/终点」工具点击格子，或直接拖拽已有起点/终点</p>
+            <p><strong>3.</strong> 选择植物或障碍工具，点击/拖拽放置</p>
+            <p><strong>4.</strong> 绘制正确路径：点击开始，再依次点击格子</p>
+            <p><strong>5.</strong> 点击「预览试玩」测试关卡</p>
+            <p><strong>6.</strong> 导出 JSON 保存关卡</p>
+            <p class="tip">💡 提示：直接按住起点/终点图标可拖动到新位置</p>
           </div>
         </div>
       </div>
@@ -282,6 +282,8 @@ const fileInput = ref(null)
 
 let isMouseDown = false
 let previewGameInstance = null
+let savedOriginalLevels = null
+let dragState = null
 
 const CELL_SIZE = 60
 
@@ -404,10 +406,43 @@ function getCellContent(row, col) {
 
 function onCellMouseDown(row, col) {
   isMouseDown = true
+  
+  if (currentTool.value === 'start' || currentTool.value === 'end') {
+    handleCellAction(row, col)
+    return
+  }
+  
+  if (isStart(row, col)) {
+    dragState = { type: 'start', moved: false }
+    return
+  }
+  if (isEnd(row, col)) {
+    dragState = { type: 'end', moved: false }
+    return
+  }
+  
   handleCellAction(row, col)
 }
 
 function onCellMouseEnter(row, col) {
+  if (dragState) {
+    if (!isObstacle(row, col) && !isStart(row, col) && !isEnd(row, col)) {
+      dragState.moved = true
+      if (dragState.type === 'start') {
+        levelData.start = { row, col }
+        removeObstacle(row, col)
+        removePlant(row, col)
+        updatePathPoint(0, row, col)
+      } else if (dragState.type === 'end') {
+        levelData.end = { row, col }
+        removeObstacle(row, col)
+        removePlant(row, col)
+        updatePathPoint(levelData.correctPath.length - 1, row, col)
+      }
+    }
+    return
+  }
+  
   if (isMouseDown && !isDrawingPath.value) {
     if (currentTool.value === 'obstacle' || currentTool.value === 'erase' || 
         currentTool.value === 'moss' || currentTool.value === 'mushroom' || currentTool.value === 'flower') {
@@ -418,6 +453,16 @@ function onCellMouseEnter(row, col) {
 
 function onCellMouseUp() {
   isMouseDown = false
+  if (dragState && !dragState.moved) {
+    dragState = null
+  }
+  dragState = null
+}
+
+function updatePathPoint(index, row, col) {
+  if (levelData.correctPath.length > 0 && index >= 0 && index < levelData.correctPath.length) {
+    levelData.correctPath[index] = { row, col }
+  }
 }
 
 function handleCellAction(row, col) {
@@ -589,9 +634,10 @@ function validateForPreview() {
 function startPreview() {
   previewMessage.value = '正在加载预览...'
   
-  const originalLevels = [...LEVELS]
+  savedOriginalLevels = LEVELS.map(l => JSON.parse(JSON.stringify(l)))
   const previewLevel = JSON.parse(JSON.stringify(levelData))
   previewLevel.id = 0
+  previewLevel.gridSize = { rows: rows.value, cols: cols.value }
   
   LEVELS.length = 0
   LEVELS.push(previewLevel)
@@ -604,14 +650,18 @@ function startPreview() {
       } catch (e) {
         previewMessage.value = '预览加载失败：' + e.message
         console.error(e)
+        restoreOriginalLevels()
       }
     }
   })
-  
-  setTimeout(() => {
+}
+
+function restoreOriginalLevels() {
+  if (savedOriginalLevels) {
     LEVELS.length = 0
-    originalLevels.forEach(l => LEVELS.push(l))
-  }, 100)
+    savedOriginalLevels.forEach(l => LEVELS.push(l))
+    savedOriginalLevels = null
+  }
 }
 
 function stopPreview() {
@@ -619,6 +669,7 @@ function stopPreview() {
     previewGameInstance.destroy()
     previewGameInstance = null
   }
+  restoreOriginalLevels()
   previewMessage.value = ''
 }
 
@@ -1053,12 +1104,22 @@ onUnmounted(() => {
   background: rgba(34, 197, 94, 0.3);
   border-color: #22c55e;
   box-shadow: inset 0 0 15px rgba(34, 197, 94, 0.3);
+  cursor: grab;
+}
+
+.grid-cell.start-cell:active {
+  cursor: grabbing;
 }
 
 .grid-cell.end-cell {
   background: rgba(168, 85, 247, 0.3);
   border-color: #a855f7;
   box-shadow: inset 0 0 15px rgba(168, 85, 247, 0.3);
+  cursor: grab;
+}
+
+.grid-cell.end-cell:active {
+  cursor: grabbing;
 }
 
 .grid-cell.obstacle-cell {
@@ -1232,6 +1293,13 @@ onUnmounted(() => {
 
 .instructions strong {
   color: #60a5fa;
+}
+
+.instructions .tip {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed rgba(96, 165, 250, 0.3);
+  color: #fbbf24;
 }
 
 ::-webkit-scrollbar {
