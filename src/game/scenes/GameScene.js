@@ -8,6 +8,7 @@ import { Tutorial } from '../modules/Tutorial.js'
 import { LEVELS, PLANT_TYPES } from '../data/levels.js'
 import { getDialogueForLevel, STORY_DIALOGUES } from '../data/story.js'
 import { getLeaderboardService } from '../modules/LeaderboardService.js'
+import { BossLevelManager } from '../modules/BossLevelManager.js'
 
 export class GameScene extends Phaser.Scene {
   constructor() {
@@ -37,6 +38,8 @@ export class GameScene extends Phaser.Scene {
     this.leaderboardService = null
     this.tutorial = null
     this.isTutorialMode = false
+    this.bossLevelManager = null
+    this.isBossLevel = false
   }
 
   setDailyChallengeConfig(config) {
@@ -83,6 +86,8 @@ export class GameScene extends Phaser.Scene {
     this.pathJudge = new PathJudge(this, this.levelMap, this.plantState)
     this.hintPanel = new HintPanel(this)
     
+    this.bossLevelManager = new BossLevelManager(this, this.levelMap)
+    
     this.effects.setLevelMap(this.levelMap)
     
     if (this.isDailyChallenge && this.dailyLevel) {
@@ -120,6 +125,9 @@ export class GameScene extends Phaser.Scene {
   loadRandomLevel(difficulty = 3, seed = null) {
     this.isAnimating = true
     this.isRandomMode = true
+    this.isBossLevel = false
+    
+    if (this.bossLevelManager) this.bossLevelManager.deactivate()
     
     if (this.creature) {
       this.creature.destroy()
@@ -139,6 +147,9 @@ export class GameScene extends Phaser.Scene {
   loadWorkshopLevel() {
     this.isAnimating = true
     this.isWorkshopMode = true
+    this.isBossLevel = false
+    
+    if (this.bossLevelManager) this.bossLevelManager.deactivate()
     
     if (this.creature) {
       this.creature.destroy()
@@ -165,6 +176,8 @@ export class GameScene extends Phaser.Scene {
   loadLevel(levelIndex) {
     this.isAnimating = true
     this.isRandomMode = false
+    
+    if (this.bossLevelManager) this.bossLevelManager.deactivate()
     
     if (this.creature) {
       this.creature.destroy()
@@ -230,6 +243,15 @@ export class GameScene extends Phaser.Scene {
     this.creature = this.effects.createCreatureSprite(startPos.x, startPos.y)
     this.creature.setDepth(100)
     
+    this.isBossLevel = !this.isDailyChallenge && !this.isRandomMode && !this.isWorkshopMode &&
+      BossLevelManager.isBossLevel(levelIndex, level)
+    
+    if (this.isBossLevel && this.bossLevelManager) {
+      this.bossLevelManager.activate(level, levelIndex, this.creature)
+      this.bossLevelManager.onDamage = (remainingHp) => this.onBossDamage(remainingHp)
+      this.bossLevelManager.onGameOver = () => this.onBossGameOver()
+    }
+    
     this.startLevelTimer()
     
     const shouldShowTutorial = levelIndex === 0 && 
@@ -257,6 +279,12 @@ export class GameScene extends Phaser.Scene {
         this.showLevelIntro(level)
         this.isAnimating = false
       }
+    } else if (this.isBossLevel && this.bossLevelManager) {
+      this.isAnimating = true
+      this.showLevelIntro(level)
+      this.bossLevelManager.showBossIntro(() => {
+        this.isAnimating = false
+      })
     } else {
       this.showLevelIntro(level)
       this.isAnimating = false
@@ -298,12 +326,16 @@ export class GameScene extends Phaser.Scene {
       ? `${level.name} 🔥` 
       : this.isStoryMode 
         ? `${levelLabel} · ${level.name}` 
-        : level.name
+        : this.isBossLevel
+          ? `👹 BOSS · ${level.name}`
+          : level.name
     const titleFill = this.isDailyChallenge 
       ? '#fbbf24' 
       : this.isStoryMode 
         ? '#a78bfa' 
-        : '#60a5fa'
+        : this.isBossLevel
+          ? '#ef4444'
+          : '#60a5fa'
     
     const intro = this.add.text(width / 2, height / 2 - 100, titleText, {
       fontSize: '32px',
@@ -328,13 +360,17 @@ export class GameScene extends Phaser.Scene {
       challengeLabel = '🔥 每日挑战 · 完成后不可重玩'
     } else if (this.isStoryMode) {
       challengeLabel = '📖 故事模式 · 点亮植物，推动剧情发展'
+    } else if (this.isBossLevel) {
+      challengeLabel = '👹 BOSS 关 · 小心移动障碍物，三次机会通关'
     }
     
     const instructionFill = this.isDailyChallenge 
       ? '#fbbf24' 
       : this.isStoryMode 
         ? '#a78bfa' 
-        : '#9ca3af'
+        : this.isBossLevel
+          ? '#ef4444'
+          : '#9ca3af'
     
     const instruction = this.add.text(width / 2, height / 2, challengeLabel, {
       fontSize: '14px',
@@ -377,6 +413,10 @@ export class GameScene extends Phaser.Scene {
     this.hintPanel.incrementAttempts()
     
     const completionTime = this.stopLevelTimer()
+    
+    if (this.isBossLevel && this.bossLevelManager) {
+      this.bossLevelManager.pause()
+    }
     
     const litCount = this.plantState.getLitCount()
     const levelScore = litCount * 10 + 50
@@ -866,9 +906,70 @@ export class GameScene extends Phaser.Scene {
   }
 
   update(time, delta) {
+    if (this.bossLevelManager && this.bossLevelManager.isActive) {
+      this.bossLevelManager.update(delta)
+    }
+  }
+
+  onBossDamage(remainingHp) {
+    this.isAnimating = false
+    
+    if (this.pathJudge) {
+      this.pathJudge.resetPath()
+    }
+    
+    this.tweens.killAllTweensOf(this.creature)
+    
+    const startPos = this.levelMap.getWorldPosition(
+      this.levelMap.currentLevel.start.row,
+      this.levelMap.currentLevel.start.col
+    )
+    
+    if (this.creature) {
+      this.tweens.add({
+        targets: this.creature,
+        x: startPos.x,
+        y: startPos.y,
+        angle: 0,
+        alpha: 1,
+        duration: 400,
+        ease: 'Cubic.out',
+        onComplete: () => {
+          this.bossLevelManager.setCreature(this.creature)
+        }
+      })
+    }
+  }
+
+  onBossGameOver() {
+    this.isAnimating = true
+    
+    if (this.pathJudge) {
+      this.pathJudge.resetPath()
+    }
+    
+    this.tweens.killAllTweensOf(this.creature)
+    
+    if (this.bossLevelManager) {
+      this.bossLevelManager.pause()
+      this.bossLevelManager.showBossGameOver(
+        () => {
+          this.bossLevelManager.deactivate()
+          this.loadLevel(this.currentLevelIndex)
+        },
+        () => {
+          this.bossLevelManager.deactivate()
+          this.isBossLevel = false
+          if (this.onBackToStart) {
+            this.onBackToStart()
+          }
+        }
+      )
+    }
   }
 
   destroy() {
+    if (this.bossLevelManager) this.bossLevelManager.destroy()
     if (this.levelMap) this.levelMap = null
     if (this.plantState) this.plantState.destroy()
     if (this.pathJudge) this.pathJudge.destroy()

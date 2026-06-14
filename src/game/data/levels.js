@@ -259,6 +259,12 @@ export const LEVELS = [
       { row: 7, col: 6 },
       { row: 7, col: 7 }
     ],
+    isBossLevel: true,
+    bossObstacles: [
+      { route: [{ row: 2, col: 0 }, { row: 2, col: 7 }], speed: 1.5 },
+      { route: [{ row: 5, col: 7 }, { row: 5, col: 0 }], speed: 1.2 },
+      { route: [{ row: 0, col: 4 }, { row: 7, col: 4 }], speed: 1.0 }
+    ],
     hint: '沿着对角线方向，在障碍物间穿梭'
   },
   {
@@ -723,6 +729,13 @@ export const LEVELS = [
       { row: 8, col: 6 },
       { row: 8, col: 5 },
       { row: 9, col: 5 }
+    ],
+    isBossLevel: true,
+    bossObstacles: [
+      { route: [{ row: 3, col: 0 }, { row: 3, col: 9 }], speed: 1.5 },
+      { route: [{ row: 6, col: 9 }, { row: 6, col: 0 }], speed: 1.3 },
+      { route: [{ row: 1, col: 3 }, { row: 8, col: 3 }], speed: 1.0 },
+      { route: [{ row: 8, col: 1 }, { row: 8, col: 8 }], speed: 1.6 }
     ],
     hint: '这是最终的试炼，向着中心的生命之源前进'
   }
