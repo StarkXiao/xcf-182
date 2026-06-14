@@ -222,7 +222,6 @@ export class Tutorial {
         const cell = this.levelMap.getCellAt(plant.row, plant.col)
         if (cell && cell.plantSprite) {
           this.plantState.pulsePlant(cell.plantSprite)
-          this.highlightElements.push(cell.plantSprite)
         }
         this.highlightCell(plant.row, plant.col, 0x22c55e, highlightAlpha * 0.5)
       })
@@ -589,6 +588,7 @@ export class Tutorial {
       this.demoGraphics = null
     }
     if (this.plantState) {
+      this.plantState.stopAllPulses()
       this.plantState.resetAll()
     }
   }
