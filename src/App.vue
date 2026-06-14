@@ -69,6 +69,9 @@
                   </button>
                 </div>
               </div>
+              <button @click="startVersusMode" class="versus-btn">
+                ⚔️ 双人对战
+              </button>
               <button @click="openEditor" class="editor-btn">
                 🎨 关卡编辑器
               </button>
@@ -187,6 +190,24 @@ const backToStart = () => {
   }
   mode.value = 'start'
   showStartScreen.value = true
+}
+
+const startVersusMode = () => {
+  showStartScreen.value = false
+  mode.value = 'game'
+  dailyChallengeLevel = null
+  
+  setTimeout(() => {
+    if (gameContainer.value) {
+      gameInstance = new Game(gameContainer.value, { 
+        isVersusMode: true,
+        maxTime: 120,
+        onBackToStart: () => {
+          backToStart()
+        }
+      })
+    }
+  }, 100)
 }
 
 const openEditor = () => {
@@ -391,6 +412,39 @@ onUnmounted(() => {
   }
   to {
     box-shadow: 0 4px 25px rgba(167, 139, 250, 0.7), 0 0 40px rgba(192, 132, 252, 0.2);
+  }
+}
+
+.versus-btn {
+  background: linear-gradient(135deg, #ef4444 0%, #f97316 50%, #eab308 100%);
+  color: white;
+  border: none;
+  padding: 15px 50px;
+  font-size: 1.2rem;
+  font-weight: bold;
+  border-radius: 50px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);
+  min-width: 240px;
+  animation: versusGlow 2s ease-in-out infinite alternate;
+}
+
+.versus-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 25px rgba(239, 68, 68, 0.6);
+}
+
+.versus-btn:active {
+  transform: translateY(0);
+}
+
+@keyframes versusGlow {
+  from {
+    box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);
+  }
+  to {
+    box-shadow: 0 4px 25px rgba(239, 68, 68, 0.7), 0 0 40px rgba(249, 115, 22, 0.3);
   }
 }
 
