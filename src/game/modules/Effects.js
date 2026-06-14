@@ -129,11 +129,42 @@ export class Effects {
     this.createBackgroundParticles()
     this.createAmbientGlow()
     
-    if (this.levelMap) {
+    if (this.levelMap && this.levelMap.currentLevel) {
       const startPos = this.levelMap.currentLevel.start
       const worldPos = this.levelMap.getWorldPosition(startPos.row, startPos.col)
       this.creature = this.createCreatureSprite(worldPos.x, worldPos.y)
     }
+  }
+
+  createLevelTransition(onComplete) {
+    const width = this.scene.game.config.width
+    const height = this.scene.game.config.height
+    
+    const mask = this.scene.add.rectangle(
+      width / 2, height / 2, width, height, 0x000000, 0
+    )
+    mask.setDepth(1000)
+    
+    this.scene.tweens.add({
+      targets: mask,
+      alpha: 1,
+      duration: 300,
+      ease: 'Cubic.In',
+      onComplete: () => {
+        if (onComplete) onComplete()
+        
+        this.scene.tweens.add({
+          targets: mask,
+          alpha: 0,
+          duration: 400,
+          ease: 'Cubic.Out',
+          delay: 100,
+          onComplete: () => {
+            mask.destroy()
+          }
+        })
+      }
+    })
   }
 
   createBackgroundParticles() {

@@ -6,6 +6,7 @@ import { Effects } from '../modules/Effects.js'
 import { HintPanel } from '../modules/HintPanel.js'
 import { LEVELS, PLANT_TYPES } from '../data/levels.js'
 import { getDialogueForLevel, STORY_DIALOGUES } from '../data/story.js'
+import { getLeaderboardService } from '../modules/LeaderboardService.js'
 
 export class GameScene extends Phaser.Scene {
   constructor() {
@@ -28,6 +29,11 @@ export class GameScene extends Phaser.Scene {
     this.isStoryMode = false
     this.onStoryComplete = null
     this.storyCompleted = false
+    this.levelStartTime = 0
+    this.levelElapsedTime = 0
+    this.timerEvent = null
+    this.isLevelActive = false
+    this.leaderboardService = null
   }
 
   setDailyChallengeConfig(config) {
@@ -58,6 +64,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   create() {
+    this.leaderboardService = getLeaderboardService()
+    
     this.effects = new Effects(this)
     this.effects.init(this.themeColors)
     
@@ -177,6 +185,8 @@ export class GameScene extends Phaser.Scene {
     this.creature = this.effects.createCreatureSprite(startPos.x, startPos.y)
     this.creature.setDepth(100)
     
+    this.startLevelTimer()
+    
     if (this.isStoryMode && levelIndex >= 0) {
       const beforeDialogue = getDialogueForLevel(levelIndex, true)
       if (beforeDialogue) {
@@ -289,6 +299,8 @@ export class GameScene extends Phaser.Scene {
     }
     this.hintPanel.incrementAttempts()
     
+    const completionTime = this.stopLevelTimer()
+    
     const litCount = this.plantState.getLitCount()
     const levelScore = litCount * 10 + 50
     this.hintPanel.updateScore(levelScore)
@@ -299,6 +311,8 @@ export class GameScene extends Phaser.Scene {
       this.levelMap.currentLevel.end.col
     )
     this.effects.createSuccessEffect(endPos.x, endPos.y)
+    
+    this.submitToLeaderboard(levelScore, completionTime)
     
     this.effects.animateCreatureAlongPath(this.creature, path, () => {
       this.time.delayedCall(500, () => {
@@ -313,18 +327,91 @@ export class GameScene extends Phaser.Scene {
             levelScore,
             () => this.loadRandomLevel(curDiff),
             false,
-            true
+            true,
+            completionTime
           )
         } else {
           this.hintPanel.showLevelComplete(
             this.currentLevelIndex,
             levelScore,
-            () => this.nextLevel()
+            () => this.nextLevel(),
+            false,
+            false,
+            completionTime
           )
         }
         this.isAnimating = false
       })
     })
+  }
+
+  async submitToLeaderboard(score, time) {
+    if (!this.leaderboardService) return
+    
+    let levelId = null
+    if (this.isDailyChallenge) {
+      const today = new Date().toISOString().split('T')[0]
+      levelId = `daily_${today}`
+    } else if (this.isRandomMode && this.levelMap.currentLevel) {
+      const seed = this.levelMap.currentLevel.seed || 'random'
+      const diff = this.levelMap.currentLevel.difficulty || 3
+      levelId = `random_${diff}_${seed}`
+    } else if (this.currentLevelIndex >= 0 && this.currentLevelIndex < LEVELS.length) {
+      levelId = LEVELS[this.currentLevelIndex].id
+    }
+    
+    if (levelId !== null) {
+      try {
+        const result = await this.leaderboardService.submitScore(levelId, score, time)
+        console.log('Leaderboard submit result:', result)
+      } catch (e) {
+        console.warn('Failed to submit to leaderboard:', e)
+      }
+    }
+  }
+
+  startLevelTimer() {
+    this.levelStartTime = this.time.now
+    this.levelElapsedTime = 0
+    this.isLevelActive = true
+    
+    if (this.timerEvent) {
+      this.timerEvent.remove()
+    }
+    
+    this.timerEvent = this.time.addEvent({
+      delay: 100,
+      loop: true,
+      callback: () => {
+        if (this.isLevelActive) {
+          this.levelElapsedTime = (this.time.now - this.levelStartTime) / 1000
+          if (this.hintPanel) {
+            this.hintPanel.updateTimer(this.levelElapsedTime)
+          }
+        }
+      }
+    })
+  }
+
+  stopLevelTimer() {
+    this.isLevelActive = false
+    if (this.timerEvent) {
+      this.timerEvent.remove()
+      this.timerEvent = null
+    }
+    this.levelElapsedTime = (this.time.now - this.levelStartTime) / 1000
+    return this.levelElapsedTime
+  }
+
+  pauseLevelTimer() {
+    this.isLevelActive = false
+  }
+
+  resumeLevelTimer() {
+    if (!this.isLevelActive) {
+      this.levelStartTime = this.time.now - this.levelElapsedTime * 1000
+      this.isLevelActive = true
+    }
   }
 
   handleStoryLevelComplete(levelScore) {

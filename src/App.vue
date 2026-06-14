@@ -6,6 +6,10 @@
       @back="mode = 'start'"
       @startChallenge="onStartDailyChallenge"
     />
+    <Leaderboard
+      v-else-if="mode === 'leaderboard'"
+      @back="mode = 'start'"
+    />
     <div v-else class="game-container">
       <div ref="gameContainer" id="phaser-game"></div>
       <div class="ui-layer">
@@ -75,6 +79,9 @@
               <button @click="openEditor" class="editor-btn">
                 🎨 关卡编辑器
               </button>
+              <button @click="openLeaderboard" class="leaderboard-btn">
+                🏆 排行榜
+              </button>
             </div>
           </div>
         </div>
@@ -88,6 +95,7 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import { Game } from './game/Game.js'
 import LevelEditor from './components/LevelEditor.vue'
 import DailyChallenge from './components/DailyChallenge.vue'
+import Leaderboard from './components/Leaderboard.vue'
 import { generateDailyLevel, isTodayCompleted, markTodayCompleted } from './game/data/dailyChallenge.js'
 
 const mode = ref('start')
@@ -212,6 +220,10 @@ const startVersusMode = () => {
 
 const openEditor = () => {
   mode.value = 'editor'
+}
+
+const openLeaderboard = () => {
+  mode.value = 'leaderboard'
 }
 
 onMounted(() => {
@@ -469,6 +481,39 @@ onUnmounted(() => {
 
 .editor-btn:active {
   transform: translateY(0);
+}
+
+.leaderboard-btn {
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+  color: white;
+  border: none;
+  padding: 12px 40px;
+  font-size: 1rem;
+  font-weight: bold;
+  border-radius: 50px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(251, 191, 36, 0.4);
+  min-width: 240px;
+  animation: leaderboardGlow 2s ease-in-out infinite alternate;
+}
+
+.leaderboard-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 25px rgba(251, 191, 36, 0.6);
+}
+
+.leaderboard-btn:active {
+  transform: translateY(0);
+}
+
+@keyframes leaderboardGlow {
+  from {
+    box-shadow: 0 4px 15px rgba(251, 191, 36, 0.4);
+  }
+  to {
+    box-shadow: 0 4px 25px rgba(251, 191, 36, 0.7), 0 0 40px rgba(251, 191, 36, 0.2);
+  }
 }
 
 .random-section {

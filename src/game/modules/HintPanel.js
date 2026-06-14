@@ -1,5 +1,6 @@
 import { LEVELS } from '../data/levels.js'
 import { ThemeManager } from './ThemeManager.js'
+import { getLeaderboardService } from './LeaderboardService.js'
 
 export class HintPanel {
   constructor(scene) {
@@ -9,9 +10,11 @@ export class HintPanel {
     this.levelInfo = null
     this.scoreText = null
     this.attemptsText = null
+    this.timerText = null
     this.isVisible = false
     this.attempts = 0
     this.score = 0
+    this.currentTime = 0
     this.isDailyChallengeMode = false
     this.isStoryMode = false
     this.isRandomMode = false
@@ -19,6 +22,7 @@ export class HintPanel {
     this.randomButtons = []
     this.themePanel = null
     this.themeButtons = []
+    this.leaderboardService = null
     
     this.themeManager = ThemeManager.getInstance()
     this.themeManager.loadThemeFromStorage()
@@ -45,14 +49,17 @@ export class HintPanel {
 
   init(preserveScore = false) {
     this.attempts = 0
+    this.currentTime = 0
     if (!preserveScore) {
       this.score = 0
     }
+    this.leaderboardService = getLeaderboardService()
     this.createTopBar()
     this.createHintPanel()
     this.createControlButtons()
     this.createThemePanel()
     this.updateScoreDisplay()
+    this.updateTimer(0)
   }
 
   updateScoreDisplay() {
@@ -97,6 +104,14 @@ export class HintPanel {
     })
     this.attemptsText.setOrigin(1, 0.5)
     this.attemptsText.setDepth(101)
+    
+    this.timerText = this.scene.add.text(width / 2, 25, '⏱ 00:00.00', {
+      fontSize: '16px',
+      fill: '#22c55e',
+      fontStyle: 'bold'
+    })
+    this.timerText.setOrigin(0.5, 0.5)
+    this.timerText.setDepth(101)
     
     const currentTheme = this.themeManager.getCurrentTheme()
     const btnX = width - 90
@@ -604,6 +619,27 @@ export class HintPanel {
     }
   }
 
+  updateTimer(seconds) {
+    this.currentTime = seconds
+    if (this.timerText) {
+      const mins = Math.floor(seconds / 60)
+      const secs = Math.floor(seconds % 60)
+      const ms = Math.floor((seconds % 1) * 100)
+      const timeStr = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}.${ms.toString().padStart(2, '0')}`
+      this.timerText.setText(`⏱ ${timeStr}`)
+    }
+  }
+
+  formatTime(seconds) {
+    if (this.leaderboardService) {
+      return this.leaderboardService.formatTime(seconds)
+    }
+    const mins = Math.floor(seconds / 60)
+    const secs = Math.floor(seconds % 60)
+    const ms = Math.floor((seconds % 1) * 100)
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}.${ms.toString().padStart(2, '0')}`
+  }
+
   updateScore(points) {
     this.score += points
     if (this.scoreText) {
@@ -696,16 +732,18 @@ export class HintPanel {
     }
   }
 
-  showLevelComplete(levelIndex, score, onNext, isStoryMode = false, isRandomMode = false) {
+  showLevelComplete(levelIndex, score, onNext, isStoryMode = false, isRandomMode = false, completionTime = null) {
     const width = this.scene.game.config.width
     const height = this.scene.game.config.height
     
     const panel = this.scene.add.container(0, 0)
     panel.setDepth(300)
     
+    const panelHeight = completionTime !== null ? 290 : 250
+    
     const bg = this.scene.add.rectangle(
       width / 2, height / 2,
-      width * 0.7, 250,
+      width * 0.7, panelHeight,
       0x0d1117, 0.95
     )
     let strokeColor = 0x22c55e
@@ -724,7 +762,7 @@ export class HintPanel {
       titleText = '🎲 随机挑战完成！'
       titleFill = '#ec4899'
     }
-    const title = this.scene.add.text(width / 2, height / 2 - 80, titleText, {
+    const title = this.scene.add.text(width / 2, height / 2 - panelHeight / 2 + 40, titleText, {
       fontSize: '24px',
       fill: titleFill,
       fontStyle: 'bold'
@@ -743,14 +781,14 @@ export class HintPanel {
       levelLabel = `${diffNames[this.currentRandomLevel.difficulty] || '随机'} 模式`
       levelFill = '#ec4899'
     }
-    const levelName = this.scene.add.text(width / 2, height / 2 - 40, levelLabel, {
+    const levelName = this.scene.add.text(width / 2, height / 2 - panelHeight / 2 + 80, levelLabel, {
       fontSize: '18px',
       fill: levelFill
     })
     levelName.setOrigin(0.5)
     panel.add(levelName)
     
-    const scoreInfo = this.scene.add.text(width / 2, height / 2, `获得 ${score} 分`, {
+    const scoreInfo = this.scene.add.text(width / 2, height / 2 - 20, `获得 ${score} 分`, {
       fontSize: '20px',
       fill: '#fbbf24',
       fontStyle: 'bold'
@@ -758,7 +796,19 @@ export class HintPanel {
     scoreInfo.setOrigin(0.5)
     panel.add(scoreInfo)
     
-    const attemptsInfo = this.scene.add.text(width / 2, height / 2 + 35, `尝试 ${this.attempts} 次`, {
+    let attemptsY = height / 2 + 20
+    if (completionTime !== null) {
+      const timeInfo = this.scene.add.text(width / 2, height / 2 + 20, `⏱ 用时 ${this.formatTime(completionTime)}`, {
+        fontSize: '16px',
+        fill: '#22c55e',
+        fontStyle: 'bold'
+      })
+      timeInfo.setOrigin(0.5)
+      panel.add(timeInfo)
+      attemptsY = height / 2 + 55
+    }
+    
+    const attemptsInfo = this.scene.add.text(width / 2, attemptsY, `尝试 ${this.attempts} 次`, {
       fontSize: '14px',
       fill: '#9ca3af'
     })
@@ -786,7 +836,8 @@ export class HintPanel {
       btnBgHover = '#9d174d'
     }
     
-    const nextBtn = this.scene.add.text(width / 2, height / 2 + 80, nextBtnLabel, {
+    const btnY = completionTime !== null ? height / 2 + 100 : height / 2 + 80
+    const nextBtn = this.scene.add.text(width / 2, btnY, nextBtnLabel, {
       fontSize: '18px',
       fill: btnFill,
       fontStyle: 'bold',

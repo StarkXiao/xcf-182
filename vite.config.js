@@ -6,5 +6,13 @@ export default defineConfig({
   server: {
     port: 3000,
     open: true
+  },
+  optimizeDeps: {
+    exclude: ['leancloud-storage', '@supabase/supabase-js']
+  },
+  build: {
+    rollupOptions: {
+      external: ['leancloud-storage', '@supabase/supabase-js']
+    }
   }
 })
