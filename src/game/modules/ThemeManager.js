@@ -14,21 +14,31 @@ export const THEMES = {
       startFill: 0x10b981,
       startStroke: 0x34d399,
       endFill: 0x8b5cf6,
-      endStroke: 0xa78bfa
+      endStroke: 0xa78bfa,
+      obstacleStyle: 'rock',
+      cellPattern: 'none'
     },
     plants: {
-      moss: { color: 0x4ade80, glowColor: 0x22c55e },
-      mushroom: { color: 0xf472b6, glowColor: 0xec4899 },
-      flower: { color: 0x60a5fa, glowColor: 0x3b82f6 }
+      moss: { color: 0x4ade80, glowColor: 0x22c55e, shape: 'moss_blob' },
+      mushroom: { color: 0xf472b6, glowColor: 0xec4899, shape: 'cap_mushroom' },
+      flower: { color: 0x60a5fa, glowColor: 0x3b82f6, shape: 'round_petal' }
     },
     particles: {
       bgTints: [0x60a5fa, 0xa78bfa, 0xf472b6, 0x4ade80],
-      ambientGlow: 0x1e3a5f
+      ambientGlow: 0x1e3a5f,
+      particleShape: 'star',
+      floatDirection: 'random',
+      speedRange: [5, 20]
     },
     creature: {
       body: 0xf97316,
       bodyStroke: 0xea580c,
-      glow: 0xfbbf24
+      glow: 0xfbbf24,
+      shape: 'round_larva',
+      antennaType: 'thin',
+      eyeStyle: 'round',
+      hasWings: false,
+      hasTail: false
     }
   },
 
@@ -47,21 +57,31 @@ export const THEMES = {
       startFill: 0x06b6d4,
       startStroke: 0x22d3ee,
       endFill: 0x0ea5e9,
-      endStroke: 0x38bdf8
+      endStroke: 0x38bdf8,
+      obstacleStyle: 'ice_pillar',
+      cellPattern: 'frost'
     },
     plants: {
-      moss: { color: 0x67e8f9, glowColor: 0x22d3ee },
-      mushroom: { color: 0xa5f3fc, glowColor: 0x67e8f9 },
-      flower: { color: 0x7dd3fc, glowColor: 0x38bdf8 }
+      moss: { color: 0x67e8f9, glowColor: 0x22d3ee, shape: 'ice_crystal' },
+      mushroom: { color: 0xa5f3fc, glowColor: 0x67e8f9, shape: 'frost_cap' },
+      flower: { color: 0x7dd3fc, glowColor: 0x38bdf8, shape: 'snowflake' }
     },
     particles: {
-      bgTints: [0x67e8f9, 0x38bdf8, 0x0ea5e9, 0xa5f3fc],
-      ambientGlow: 0x1e3a8a
+      bgTints: [0x67e8f9, 0x38bdf8, 0x0ea5e9, 0xa5f3fc, 0xffffff],
+      ambientGlow: 0x1e3a8a,
+      particleShape: 'snowflake',
+      floatDirection: 'down',
+      speedRange: [8, 25]
     },
     creature: {
       body: 0x06b6d4,
       bodyStroke: 0x0891b2,
-      glow: 0x22d3ee
+      glow: 0x22d3ee,
+      shape: 'crystal_fish',
+      antennaType: 'ice_spike',
+      eyeStyle: 'ice_blue',
+      hasWings: true,
+      hasTail: true
     }
   },
 
@@ -80,21 +100,31 @@ export const THEMES = {
       startFill: 0xf97316,
       startStroke: 0xfb923c,
       endFill: 0xeab308,
-      endStroke: 0xfacc15
+      endStroke: 0xfacc15,
+      obstacleStyle: 'lava_rock',
+      cellPattern: 'crack'
     },
     plants: {
-      moss: { color: 0xfb923c, glowColor: 0xf97316 },
-      mushroom: { color: 0xf87171, glowColor: 0xef4444 },
-      flower: { color: 0xfbbf24, glowColor: 0xf59e0b }
+      moss: { color: 0xfb923c, glowColor: 0xf97316, shape: 'fire_fern' },
+      mushroom: { color: 0xf87171, glowColor: 0xef4444, shape: 'flame_cap' },
+      flower: { color: 0xfbbf24, glowColor: 0xf59e0b, shape: 'ember_bloom' }
     },
     particles: {
-      bgTints: [0xfbbf24, 0xf97316, 0xef4444, 0xf87171],
-      ambientGlow: 0x7c2d12
+      bgTints: [0xfbbf24, 0xf97316, 0xef4444, 0xf87171, 0xfde68a],
+      ambientGlow: 0x7c2d12,
+      particleShape: 'ember',
+      floatDirection: 'up',
+      speedRange: [15, 40]
     },
     creature: {
       body: 0xef4444,
       bodyStroke: 0xdc2626,
-      glow: 0xfbbf24
+      glow: 0xfbbf24,
+      shape: 'fire_salamander',
+      antennaType: 'flame',
+      eyeStyle: 'ember',
+      hasWings: false,
+      hasTail: true
     }
   },
 
@@ -113,21 +143,31 @@ export const THEMES = {
       startFill: 0xd946ef,
       startStroke: 0xe879f9,
       endFill: 0xec4899,
-      endStroke: 0xf472b6
+      endStroke: 0xf472b6,
+      obstacleStyle: 'crystal_cluster',
+      cellPattern: 'prism'
     },
     plants: {
-      moss: { color: 0xa78bfa, glowColor: 0x8b5cf6 },
-      mushroom: { color: 0xf0abfc, glowColor: 0xe879f9 },
-      flower: { color: 0xf9a8d4, glowColor: 0xf472b6 }
+      moss: { color: 0xa78bfa, glowColor: 0x8b5cf6, shape: 'amthyst_cluster' },
+      mushroom: { color: 0xf0abfc, glowColor: 0xe879f9, shape: 'crystal_cap' },
+      flower: { color: 0xf9a8d4, glowColor: 0xf472b6, shape: 'gem_rose' }
     },
     particles: {
-      bgTints: [0xa78bfa, 0xe879f9, 0xf472b6, 0xc4b5fd],
-      ambientGlow: 0x4c1d95
+      bgTints: [0xa78bfa, 0xe879f9, 0xf472b6, 0xc4b5fd, 0xf0abfc],
+      ambientGlow: 0x4c1d95,
+      particleShape: 'diamond',
+      floatDirection: 'radial',
+      speedRange: [3, 15]
     },
     creature: {
       body: 0xa855f7,
       bodyStroke: 0x9333ea,
-      glow: 0xe879f9
+      glow: 0xe879f9,
+      shape: 'fairy_gem',
+      antennaType: 'crystal_shard',
+      eyeStyle: 'rainbow',
+      hasWings: true,
+      hasTail: false
     }
   }
 }
@@ -197,9 +237,14 @@ export class ThemeManager {
     const theme = themeId ? this.getTheme(themeId) : this.getCurrentTheme()
     const plantColors = theme.plants[plantType]
     if (!plantColors) {
-      return { color: 0x4ade80, glowColor: 0x22c55e }
+      return { color: 0x4ade80, glowColor: 0x22c55e, shape: 'moss_blob' }
     }
     return plantColors
+  }
+
+  getPlantShape(plantType, themeId = null) {
+    const plantConfig = this.getPlantColors(plantType, themeId)
+    return plantConfig.shape || 'moss_blob'
   }
 
   getParticleColors(themeId = null) {
@@ -210,6 +255,14 @@ export class ThemeManager {
   getCreatureColors(themeId = null) {
     const theme = themeId ? this.getTheme(themeId) : this.getCurrentTheme()
     return theme.creature
+  }
+
+  getCreatureShape(themeId = null) {
+    return this.getCreatureColors(themeId).shape || 'round_larva'
+  }
+
+  getThemeId() {
+    return this.currentThemeId
   }
 
   saveThemeToStorage() {
