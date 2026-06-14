@@ -29,6 +29,8 @@ export class HintPanel {
     this.onRedo = null
     this.undoBtn = null
     this.redoBtn = null
+    this.stepsText = null
+    this.steps = 0
     
     this.themeManager = ThemeManager.getInstance()
     this.themeManager.loadThemeFromStorage()
@@ -67,6 +69,7 @@ export class HintPanel {
   init(preserveScore = false) {
     this.attempts = 0
     this.currentTime = 0
+    this.steps = 0
     if (!preserveScore) {
       this.score = 0
     }
@@ -77,6 +80,7 @@ export class HintPanel {
     this.createThemePanel()
     this.updateScoreDisplay()
     this.updateTimer(0)
+    this.updateSteps(0)
   }
 
   updateScoreDisplay() {
@@ -107,7 +111,7 @@ export class HintPanel {
     this.levelInfo.setOrigin(0, 0.5)
     this.levelInfo.setDepth(101)
     
-    this.scoreText = this.scene.add.text(width - 180, 25, '', {
+    this.scoreText = this.scene.add.text(width - 200, 25, '', {
       fontSize: '16px',
       fill: '#fbbf24',
       fontStyle: 'bold'
@@ -115,7 +119,7 @@ export class HintPanel {
     this.scoreText.setOrigin(1, 0.5)
     this.scoreText.setDepth(101)
     
-    this.attemptsText = this.scene.add.text(width - 180, 50, '', {
+    this.attemptsText = this.scene.add.text(width - 200, 50, '', {
       fontSize: '14px',
       fill: '#9ca3af'
     })
@@ -130,10 +134,18 @@ export class HintPanel {
     this.timerText.setOrigin(0.5, 0.5)
     this.timerText.setDepth(101)
     
+    this.stepsText = this.scene.add.text(width / 2, 50, '👣 步数: 0', {
+      fontSize: '14px',
+      fill: '#f472b6',
+      fontStyle: 'bold'
+    })
+    this.stepsText.setOrigin(0.5, 0.5)
+    this.stepsText.setDepth(101)
+    
     const currentTheme = this.themeManager.getCurrentTheme()
-    const btnX = width - 90
+    const btnX = width - 40
     const btnY = 35
-    const btnW = 90
+    const btnW = 60
     const btnH = 44
     
     const themeBtnBg = this.scene.add.rectangle(btnX, btnY, btnW, btnH, 0x1e1b4b, 0.95)
@@ -701,6 +713,13 @@ export class HintPanel {
     }
   }
 
+  updateSteps(steps) {
+    this.steps = steps
+    if (this.stepsText) {
+      this.stepsText.setText(`👣 步数: ${steps}`)
+    }
+  }
+
   formatTime(seconds) {
     if (this.leaderboardService) {
       return this.leaderboardService.formatTime(seconds)
@@ -803,18 +822,18 @@ export class HintPanel {
     }
   }
 
-  showLevelComplete(levelIndex, score, onNext, isStoryMode = false, isRandomMode = false, completionTime = null, isWorkshopMode = false) {
+  showLevelComplete(levelIndex, score, onNext, isStoryMode = false, isRandomMode = false, completionTime = null, isWorkshopMode = false, stars = 1, steps = 0, canNext = true) {
     const width = this.scene.game.config.width
     const height = this.scene.game.config.height
     
     const panel = this.scene.add.container(0, 0)
     panel.setDepth(300)
     
-    const panelHeight = completionTime !== null ? 290 : 250
+    const panelHeight = 360
     
     const bg = this.scene.add.rectangle(
       width / 2, height / 2,
-      width * 0.7, panelHeight,
+      width * 0.72, panelHeight,
       0x0d1117, 0.95
     )
     let strokeColor = 0x22c55e
@@ -838,8 +857,8 @@ export class HintPanel {
       titleText = '🎨 工坊关卡完成！'
       titleFill = '#8b5cf6'
     }
-    const title = this.scene.add.text(width / 2, height / 2 - panelHeight / 2 + 40, titleText, {
-      fontSize: '24px',
+    const title = this.scene.add.text(width / 2, height / 2 - panelHeight / 2 + 35, titleText, {
+      fontSize: '26px',
       fill: titleFill,
       fontStyle: 'bold'
     })
@@ -861,14 +880,36 @@ export class HintPanel {
       levelLabel = this.currentWorkshopLevel.name || '创意工坊'
       levelFill = '#8b5cf6'
     }
-    const levelName = this.scene.add.text(width / 2, height / 2 - panelHeight / 2 + 80, levelLabel, {
-      fontSize: '18px',
+    const levelName = this.scene.add.text(width / 2, height / 2 - panelHeight / 2 + 68, levelLabel, {
+      fontSize: '16px',
       fill: levelFill
     })
     levelName.setOrigin(0.5)
     panel.add(levelName)
     
-    const scoreInfo = this.scene.add.text(width / 2, height / 2 - 20, `获得 ${score} 分`, {
+    const starsY = height / 2 - panelHeight / 2 + 108
+    for (let i = 0; i < 3; i++) {
+      const starX = width / 2 + (i - 1) * 42
+      const starChar = i < stars ? '⭐' : '☆'
+      const star = this.scene.add.text(starX, starsY, starChar, {
+        fontSize: '34px'
+      })
+      star.setOrigin(0.5)
+      star.setAlpha(i < stars ? 1 : 0.3)
+      if (i < stars) {
+        this.scene.tweens.add({
+          targets: star,
+          scale: { from: 0, to: 1.2 },
+          alpha: { from: 0, to: 1 },
+          duration: 400,
+          ease: 'Back.out',
+          delay: 200 + i * 150
+        })
+      }
+      panel.add(star)
+    }
+    
+    const scoreInfo = this.scene.add.text(width / 2, starsY + 42, `获得 ${score} 分`, {
       fontSize: '20px',
       fill: '#fbbf24',
       fontStyle: 'bold'
@@ -876,24 +917,57 @@ export class HintPanel {
     scoreInfo.setOrigin(0.5)
     panel.add(scoreInfo)
     
-    let attemptsY = height / 2 + 20
+    const statsY = starsY + 78
+    const statsSpacing = 90
+    const stats = []
+    
     if (completionTime !== null) {
-      const timeInfo = this.scene.add.text(width / 2, height / 2 + 20, `⏱ 用时 ${this.formatTime(completionTime)}`, {
-        fontSize: '16px',
-        fill: '#22c55e',
-        fontStyle: 'bold'
+      stats.push({
+        icon: '⏱',
+        label: '用时',
+        value: this.formatTime(completionTime),
+        color: '#22c55e'
       })
-      timeInfo.setOrigin(0.5)
-      panel.add(timeInfo)
-      attemptsY = height / 2 + 55
     }
     
-    const attemptsInfo = this.scene.add.text(width / 2, attemptsY, `尝试 ${this.attempts} 次`, {
-      fontSize: '14px',
-      fill: '#9ca3af'
+    stats.push({
+      icon: '👣',
+      label: '步数',
+      value: `${steps}`,
+      color: '#f472b6'
     })
-    attemptsInfo.setOrigin(0.5)
-    panel.add(attemptsInfo)
+    
+    stats.push({
+      icon: '🎯',
+      label: '尝试',
+      value: `${this.attempts} 次`,
+      color: '#60a5fa'
+    })
+    
+    const statsStartX = width / 2 - ((stats.length - 1) * statsSpacing) / 2
+    stats.forEach((stat, i) => {
+      const sx = statsStartX + i * statsSpacing
+      const iconText = this.scene.add.text(sx, statsY - 2, stat.icon, {
+        fontSize: '18px'
+      })
+      iconText.setOrigin(0.5, 0)
+      panel.add(iconText)
+      
+      const valText = this.scene.add.text(sx, statsY + 20, stat.value, {
+        fontSize: '15px',
+        fill: stat.color,
+        fontStyle: 'bold'
+      })
+      valText.setOrigin(0.5, 0)
+      panel.add(valText)
+      
+      const lblText = this.scene.add.text(sx, statsY + 40, stat.label, {
+        fontSize: '11px',
+        fill: '#9ca3af'
+      })
+      lblText.setOrigin(0.5, 0)
+      panel.add(lblText)
+    })
     
     let nextBtnLabel = '下一关 →'
     let btnFill = '#22c55e'
@@ -901,7 +975,7 @@ export class HintPanel {
     let btnBgHover = '#15803d'
     
     if (isStoryMode) {
-      nextBtnLabel = levelIndex < LEVELS.length - 1 ? '继续剧情 →' : '再玩一次'
+      nextBtnLabel = levelIndex < (this.scene.currentLevelIndex >= 0 ? 100 : LEVELS.length - 1) ? '继续剧情 →' : '再玩一次'
       btnFill = '#a78bfa'
       btnBg = '#4c1d95'
       btnBgHover = '#6d28d9'
@@ -923,35 +997,46 @@ export class HintPanel {
       btnBgHover = '#6d28d9'
     }
     
-    const btnY = completionTime !== null ? height / 2 + 100 : height / 2 + 80
+    if (!canNext && !isRandomMode && !isWorkshopMode) {
+      nextBtnLabel = '🔒 提升星级解锁'
+      btnFill = '#9ca3af'
+      btnBg = '#1e293b'
+      btnBgHover = '#1e293b'
+    }
+    
+    const btnY = height / 2 + panelHeight / 2 - 46
     const nextBtn = this.scene.add.text(width / 2, btnY, nextBtnLabel, {
       fontSize: '18px',
       fill: btnFill,
       fontStyle: 'bold',
       backgroundColor: btnBg,
-      padding: { x: 25, y: 10 }
+      padding: { x: 28, y: 12 }
     })
     nextBtn.setOrigin(0.5)
     nextBtn.setInteractive({ useHandCursor: true })
     
-    nextBtn.on('pointerdown', () => {
-      this.scene.tweens.add({
-        targets: panel,
-        alpha: 0,
-        duration: 200,
-        onComplete: () => {
-          panel.destroy()
-          if (onNext) onNext()
-        }
+    if (canNext || isRandomMode || isWorkshopMode) {
+      nextBtn.on('pointerdown', () => {
+        this.scene.tweens.add({
+          targets: panel,
+          alpha: 0,
+          duration: 200,
+          onComplete: () => {
+            panel.destroy()
+            if (onNext) onNext()
+          }
+        })
       })
-    })
-    
-    nextBtn.on('pointerover', () => {
-      nextBtn.setBackgroundColor(btnBgHover)
-    })
-    nextBtn.on('pointerout', () => {
-      nextBtn.setBackgroundColor(btnBg)
-    })
+      
+      nextBtn.on('pointerover', () => {
+        nextBtn.setBackgroundColor(btnBgHover)
+      })
+      nextBtn.on('pointerout', () => {
+        nextBtn.setBackgroundColor(btnBg)
+      })
+    } else {
+      if (nextBtn.input) nextBtn.input.enabled = false
+    }
     
     panel.add(nextBtn)
     
@@ -959,7 +1044,7 @@ export class HintPanel {
     this.scene.tweens.add({
       targets: panel,
       alpha: 1,
-      scale: { from: 0.8, to: 1 },
+      scale: { from: 0.85, to: 1 },
       duration: 400,
       ease: 'Back.out'
     })
@@ -1098,8 +1183,12 @@ export class HintPanel {
 
   reset() {
     this.attempts = 0
+    this.steps = 0
     if (this.attemptsText) {
       this.attemptsText.setText('尝试: 0 次')
+    }
+    if (this.stepsText) {
+      this.stepsText.setText('👣 步数: 0')
     }
   }
 

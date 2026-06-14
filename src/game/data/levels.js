@@ -36,7 +36,13 @@ export const LEVELS = [
       { row: 3, col: 4 },
       { row: 4, col: 4 }
     ],
-    hint: '沿着右上方的路径前进，避开中间的障碍物'
+    hint: '沿着右上方的路径前进，避开中间的障碍物',
+    parTime3Star: 15,
+    parTime2Star: 30,
+    parSteps3Star: 8,
+    parSteps2Star: 12,
+    parAttempts3Star: 1,
+    parAttempts2Star: 3
   },
   {
     id: 2,
@@ -87,7 +93,13 @@ export const LEVELS = [
       { row: 4, col: 5 },
       { row: 5, col: 5 }
     ],
-    hint: '先向右，再向下，沿着边缘绕过障碍物'
+    hint: '先向右，再向下，沿着边缘绕过障碍物',
+    parTime3Star: 25,
+    parTime2Star: 50,
+    parSteps3Star: 10,
+    parSteps2Star: 15,
+    parAttempts3Star: 1,
+    parAttempts2Star: 3
   },
   {
     id: 3,
@@ -139,7 +151,13 @@ export const LEVELS = [
       { row: 5, col: 3 },
       { row: 6, col: 3 }
     ],
-    hint: '先向下，然后左右探索，找到通往终点的路'
+    hint: '先向下，然后左右探索，找到通往终点的路',
+    parTime3Star: 40,
+    parTime2Star: 80,
+    parSteps3Star: 15,
+    parSteps2Star: 22,
+    parAttempts3Star: 1,
+    parAttempts2Star: 4
   },
   {
     id: 4,
@@ -197,7 +215,13 @@ export const LEVELS = [
       { row: 6, col: 5 },
       { row: 6, col: 6 }
     ],
-    hint: '中心区域是关键，上下穿插寻找通路'
+    hint: '中心区域是关键，上下穿插寻找通路',
+    parTime3Star: 45,
+    parTime2Star: 90,
+    parSteps3Star: 15,
+    parSteps2Star: 22,
+    parAttempts3Star: 1,
+    parAttempts2Star: 4
   },
   {
     id: 5,
@@ -265,7 +289,13 @@ export const LEVELS = [
       { route: [{ row: 5, col: 7 }, { row: 5, col: 0 }], speed: 1.2 },
       { route: [{ row: 0, col: 4 }, { row: 7, col: 4 }], speed: 1.0 }
     ],
-    hint: '沿着对角线方向，在障碍物间穿梭'
+    hint: '沿着对角线方向，在障碍物间穿梭',
+    parTime3Star: 60,
+    parTime2Star: 120,
+    parSteps3Star: 14,
+    parSteps2Star: 22,
+    parAttempts3Star: 1,
+    parAttempts2Star: 5
   },
   {
     id: 6,
@@ -333,7 +363,13 @@ export const LEVELS = [
       { row: 6, col: 4 },
       { row: 7, col: 4 }
     ],
-    hint: '在根系之间左右迂回，寻找唯一的通路'
+    hint: '在根系之间左右迂回，寻找唯一的通路',
+    parTime3Star: 70,
+    parTime2Star: 140,
+    parSteps3Star: 18,
+    parSteps2Star: 28,
+    parAttempts3Star: 1,
+    parAttempts2Star: 5
   },
   {
     id: 7,
@@ -403,7 +439,13 @@ export const LEVELS = [
       { row: 7, col: 4 },
       { row: 8, col: 4 }
     ],
-    hint: '穿越湖泊中心，在漩涡之间寻找安全的路径'
+    hint: '穿越湖泊中心，在漩涡之间寻找安全的路径',
+    parTime3Star: 80,
+    parTime2Star: 160,
+    parSteps3Star: 14,
+    parSteps2Star: 22,
+    parAttempts3Star: 1,
+    parAttempts2Star: 5
   },
   {
     id: 8,
@@ -508,7 +550,13 @@ export const LEVELS = [
       { row: 8, col: 7 },
       { row: 8, col: 8 }
     ],
-    hint: '从左上到右下，在晶簇之间蜿蜒前行'
+    hint: '从左上到右下，在晶簇之间蜿蜒前行',
+    parTime3Star: 90,
+    parTime2Star: 180,
+    parSteps3Star: 18,
+    parSteps2Star: 28,
+    parAttempts3Star: 1,
+    parAttempts2Star: 5
   },
   {
     id: 9,
@@ -628,7 +676,13 @@ export const LEVELS = [
       { row: 8, col: 9 },
       { row: 9, col: 9 }
     ],
-    hint: '沿着对角线路径，在古老的机关之间找到通路'
+    hint: '沿着对角线路径，在古老的机关之间找到通路',
+    parTime3Star: 100,
+    parTime2Star: 200,
+    parSteps3Star: 18,
+    parSteps2Star: 28,
+    parAttempts3Star: 1,
+    parAttempts2Star: 6
   },
   {
     id: 10,
@@ -737,7 +791,13 @@ export const LEVELS = [
       { route: [{ row: 1, col: 3 }, { row: 8, col: 3 }], speed: 1.0 },
       { route: [{ row: 8, col: 1 }, { row: 8, col: 8 }], speed: 1.6 }
     ],
-    hint: '这是最终的试炼，向着中心的生命之源前进'
+    hint: '这是最终的试炼，向着中心的生命之源前进',
+    parTime3Star: 120,
+    parTime2Star: 240,
+    parSteps3Star: 16,
+    parSteps2Star: 26,
+    parAttempts3Star: 1,
+    parAttempts2Star: 6
   }
 ]
 

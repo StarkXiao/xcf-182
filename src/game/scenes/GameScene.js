@@ -9,6 +9,7 @@ import { LEVELS, PLANT_TYPES } from '../data/levels.js'
 import { getDialogueForLevel, STORY_DIALOGUES } from '../data/story.js'
 import { getLeaderboardService } from '../modules/LeaderboardService.js'
 import { BossLevelManager } from '../modules/BossLevelManager.js'
+import { getLevelProgressManager } from '../modules/LevelProgress.js'
 
 export class GameScene extends Phaser.Scene {
   constructor() {
@@ -40,6 +41,8 @@ export class GameScene extends Phaser.Scene {
     this.isTutorialMode = false
     this.bossLevelManager = null
     this.isBossLevel = false
+    this.levelProgressManager = null
+    this.currentLevelSteps = 0
   }
 
   setDailyChallengeConfig(config) {
@@ -77,6 +80,7 @@ export class GameScene extends Phaser.Scene {
 
   create() {
     this.leaderboardService = getLeaderboardService()
+    this.levelProgressManager = getLevelProgressManager()
     
     this.effects = new Effects(this)
     this.effects.init(this.themeColors)
@@ -204,10 +208,13 @@ export class GameScene extends Phaser.Scene {
     this.plantState.init()
     this.pathJudge.init()
     
+    this.currentLevelSteps = 0
+    
     const hasExistingScore = this.hintPanel && this.hintPanel.getScore() > 0
     this.hintPanel.init(hasExistingScore)
     this.hintPanel.setCurrentLevelIndex(levelIndex >= 0 ? levelIndex : this.currentLevelIndex)
     this.hintPanel.reset()
+    this.hintPanel.updateSteps(0)
     
     if (this.isDailyChallenge) {
       this.hintPanel.setDailyChallengeMode(true)
@@ -244,6 +251,11 @@ export class GameScene extends Phaser.Scene {
     this.pathJudge.onHistoryChange = (canUndo, canRedo) => {
       if (this.hintPanel) {
         this.hintPanel.updateUndoRedoButtons(canUndo, canRedo)
+      }
+      if (this.pathJudge && this.hintPanel) {
+        const pathLen = Math.max(0, this.pathJudge.getPathLength() - 1)
+        this.currentLevelSteps = pathLen
+        this.hintPanel.updateSteps(pathLen)
       }
     }
     
@@ -423,6 +435,8 @@ export class GameScene extends Phaser.Scene {
     this.hintPanel.incrementAttempts()
     
     const completionTime = this.stopLevelTimer()
+    const completionSteps = Math.max(0, path.length - 1)
+    const currentAttempts = this.hintPanel.getAttempts()
     
     if (this.isBossLevel && this.bossLevelManager) {
       this.bossLevelManager.pause()
@@ -438,6 +452,28 @@ export class GameScene extends Phaser.Scene {
       this.levelMap.currentLevel.end.col
     )
     this.effects.createSuccessEffect(endPos.x, endPos.y)
+    
+    let stars = 1
+    let canNext = true
+    const isNormalMode = !this.isDailyChallenge && !this.isStoryMode && !this.isRandomMode && !this.isWorkshopMode
+    
+    if (isNormalMode && this.levelMap.currentLevel && this.levelProgressManager) {
+      stars = this.calculateStars(
+        this.levelMap.currentLevel,
+        completionTime,
+        completionSteps,
+        currentAttempts
+      )
+      canNext = this.canUnlockNextLevel(this.currentLevelIndex, stars)
+      
+      const levelId = this.levelMap.currentLevel.id
+      this.levelProgressManager.saveLevelResult(levelId, {
+        time: completionTime,
+        steps: completionSteps,
+        attempts: currentAttempts,
+        stars: stars
+      })
+    }
     
     this.submitToLeaderboard(levelScore, completionTime)
     
@@ -455,7 +491,11 @@ export class GameScene extends Phaser.Scene {
             () => this.loadRandomLevel(curDiff),
             false,
             true,
-            completionTime
+            completionTime,
+            false,
+            stars,
+            completionSteps,
+            true
           )
         } else if (this.isWorkshopMode) {
           this.hintPanel.showLevelComplete(
@@ -469,6 +509,9 @@ export class GameScene extends Phaser.Scene {
             false,
             false,
             completionTime,
+            true,
+            stars,
+            completionSteps,
             true
           )
         } else {
@@ -478,7 +521,11 @@ export class GameScene extends Phaser.Scene {
             () => this.nextLevel(),
             false,
             false,
-            completionTime
+            completionTime,
+            false,
+            stars,
+            completionSteps,
+            canNext
           )
         }
         this.isAnimating = false
@@ -557,9 +604,68 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  calculateStars(level, time, steps, attempts) {
+    let stars = 1
+    
+    const parTime2 = level.parTime2Star || 60
+    const parTime3 = level.parTime3Star || 30
+    const parSteps2 = level.parSteps2Star || 20
+    const parSteps3 = level.parSteps3Star || 10
+    const parAttempts2 = level.parAttempts2Star || 3
+    const parAttempts3 = level.parAttempts3Star || 1
+    
+    const meetTime2 = time <= parTime2
+    const meetTime3 = time <= parTime3
+    const meetSteps2 = steps <= parSteps2
+    const meetSteps3 = steps <= parSteps3
+    const meetAttempts2 = attempts <= parAttempts2
+    const meetAttempts3 = attempts <= parAttempts3
+    
+    if (meetTime3 && meetSteps3 && meetAttempts3) {
+      stars = 3
+    } else if ((meetTime2 || meetTime3) && (meetSteps2 || meetSteps3) && (meetAttempts2 || meetAttempts3)) {
+      const twoStarConditions = [meetTime2, meetSteps2, meetAttempts2].filter(Boolean).length
+      if (twoStarConditions >= 2) {
+        stars = 2
+      } else {
+        stars = 1
+      }
+    } else {
+      stars = 1
+    }
+    
+    return stars
+  }
+
+  canUnlockNextLevel(currentLevelIndex, stars) {
+    return stars >= 1 && currentLevelIndex < LEVELS.length - 1
+  }
+
   handleStoryLevelComplete(levelScore) {
     const isLastLevel = this.currentLevelIndex >= LEVELS.length - 1
     const afterDialogue = getDialogueForLevel(this.currentLevelIndex, false)
+    
+    const completionTime = this.levelElapsedTime
+    const completionSteps = this.currentLevelSteps
+    const currentAttempts = this.hintPanel.getAttempts()
+    
+    let stars = 1
+    if (this.levelMap.currentLevel && this.levelProgressManager) {
+      stars = this.calculateStars(
+        this.levelMap.currentLevel,
+        completionTime,
+        completionSteps,
+        currentAttempts
+      )
+      
+      const levelId = this.levelMap.currentLevel.id
+      this.levelProgressManager.saveLevelResult(levelId, {
+        time: completionTime,
+        steps: completionSteps,
+        attempts: currentAttempts,
+        stars: stars
+      })
+    }
     
     const proceedToNext = () => {
       if (isLastLevel) {
@@ -570,6 +676,12 @@ export class GameScene extends Phaser.Scene {
           this.currentLevelIndex,
           levelScore,
           () => this.nextLevel(),
+          true,
+          false,
+          completionTime,
+          false,
+          stars,
+          completionSteps,
           true
         )
       }
@@ -785,6 +897,11 @@ export class GameScene extends Phaser.Scene {
     
     this.pathJudge.resetPath()
     this.refreshUndoRedoButtons()
+    
+    this.currentLevelSteps = 0
+    if (this.hintPanel) {
+      this.hintPanel.updateSteps(0)
+    }
     
     const startPos = this.levelMap.getWorldPosition(
       this.levelMap.currentLevel.start.row,
