@@ -236,8 +236,18 @@ export class GameScene extends Phaser.Scene {
       this.loadRandomLevel(diff)
     }
     
+    this.hintPanel.onUndo = () => this.handleUndo()
+    this.hintPanel.onRedo = () => this.handleRedo()
+    
     this.pathJudge.onPathComplete = (path) => this.onPathComplete(path)
     this.pathJudge.onPathInvalid = () => this.onPathInvalid()
+    this.pathJudge.onHistoryChange = (canUndo, canRedo) => {
+      if (this.hintPanel) {
+        this.hintPanel.updateUndoRedoButtons(canUndo, canRedo)
+      }
+    }
+    
+    this.refreshUndoRedoButtons()
     
     const startPos = this.levelMap.getWorldPosition(level.start.row, level.start.col)
     this.creature = this.effects.createCreatureSprite(startPos.x, startPos.y)
@@ -745,12 +755,36 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  handleUndo() {
+    if (this.isAnimating || this.isTutorialMode) return
+    if (this.pathJudge && this.pathJudge.undo()) {
+      this.refreshUndoRedoButtons()
+    }
+  }
+
+  handleRedo() {
+    if (this.isAnimating || this.isTutorialMode) return
+    if (this.pathJudge && this.pathJudge.redo()) {
+      this.refreshUndoRedoButtons()
+    }
+  }
+
+  refreshUndoRedoButtons() {
+    if (this.hintPanel && this.pathJudge) {
+      this.hintPanel.updateUndoRedoButtons(
+        this.pathJudge.canUndo(),
+        this.pathJudge.canRedo()
+      )
+    }
+  }
+
   resetLevel() {
     if (this.isAnimating || this.isTutorialMode) return
     if (this.isDailyChallenge && this.dailyCompleted) return
     if (this.isStoryMode && this.storyCompleted) return
     
     this.pathJudge.resetPath()
+    this.refreshUndoRedoButtons()
     
     const startPos = this.levelMap.getWorldPosition(
       this.levelMap.currentLevel.start.row,

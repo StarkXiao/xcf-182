@@ -11,6 +11,10 @@ export class PathJudge {
     this.pathGraphics = null
     this.onPathComplete = null
     this.onPathInvalid = null
+    this.onHistoryChange = null
+    this.maxHistorySize = 3
+    this.historyStack = []
+    this.redoStack = []
     
     this.themeManager = ThemeManager.getInstance()
     this.themeUnsubscribe = this.themeManager.onThemeChange((theme) => {
@@ -21,8 +25,128 @@ export class PathJudge {
   init() {
     this.selectedPath = []
     this.isDrawing = false
+    this.historyStack = []
+    this.redoStack = []
     this.createPathGraphics()
     this.setupInputHandlers()
+  }
+
+  _saveHistorySnapshot() {
+    const snapshot = {
+      path: this.selectedPath.map(cell => ({ row: cell.row, col: cell.col })),
+      litPlants: []
+    }
+    const { rows, cols } = this.levelMap.currentLevel.gridSize
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < cols; col++) {
+        const cell = this.levelMap.gridCells[row][col]
+        if (cell.plantSprite && cell.plantSprite.getData('isLit')) {
+          snapshot.litPlants.push({ row, col })
+        }
+      }
+    }
+    this.historyStack.push(snapshot)
+    if (this.historyStack.length > this.maxHistorySize) {
+      this.historyStack.shift()
+    }
+    this.redoStack = []
+    if (this.onHistoryChange) {
+      this.onHistoryChange(this.canUndo(), this.canRedo())
+    }
+  }
+
+  _restoreSnapshot(snapshot) {
+    this.selectedPath.forEach(cell => {
+      cell.isOnPath = false
+      this.unhighlightCell(cell)
+    })
+    this.selectedPath = []
+    this.plantState.resetAll()
+
+    const { rows, cols } = this.levelMap.currentLevel.gridSize
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < cols; col++) {
+        const cell = this.levelMap.gridCells[row][col]
+        cell.isOnPath = false
+        cell.isLit = false
+      }
+    }
+
+    snapshot.path.forEach(pos => {
+      const cell = this.levelMap.getCellAt(pos.row, pos.col)
+      if (cell) {
+        cell.isOnPath = true
+        this.selectedPath.push(cell)
+        this.highlightCell(cell, 0x3b82f6)
+      }
+    })
+
+    snapshot.litPlants.forEach(pos => {
+      const cell = this.levelMap.getCellAt(pos.row, pos.col)
+      if (cell && cell.plantSprite) {
+        this.plantState.lightUp(cell.plantSprite)
+      }
+    })
+
+    this.updatePathDisplay()
+  }
+
+  canUndo() {
+    return this.historyStack.length > 0
+  }
+
+  canRedo() {
+    return this.redoStack.length > 0
+  }
+
+  undo() {
+    if (!this.canUndo()) return false
+    const currentSnapshot = {
+      path: this.selectedPath.map(cell => ({ row: cell.row, col: cell.col })),
+      litPlants: []
+    }
+    const { rows, cols } = this.levelMap.currentLevel.gridSize
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < cols; col++) {
+        const cell = this.levelMap.gridCells[row][col]
+        if (cell.plantSprite && cell.plantSprite.getData('isLit')) {
+          currentSnapshot.litPlants.push({ row, col })
+        }
+      }
+    }
+    this.redoStack.push(currentSnapshot)
+
+    const snapshot = this.historyStack.pop()
+    this._restoreSnapshot(snapshot)
+    if (this.onHistoryChange) {
+      this.onHistoryChange(this.canUndo(), this.canRedo())
+    }
+    return true
+  }
+
+  redo() {
+    if (!this.canRedo()) return false
+    const currentSnapshot = {
+      path: this.selectedPath.map(cell => ({ row: cell.row, col: cell.col })),
+      litPlants: []
+    }
+    const { rows, cols } = this.levelMap.currentLevel.gridSize
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < cols; col++) {
+        const cell = this.levelMap.gridCells[row][col]
+        if (cell.plantSprite && cell.plantSprite.getData('isLit')) {
+          currentSnapshot.litPlants.push({ row, col })
+        }
+      }
+    }
+    this.historyStack.push(currentSnapshot)
+
+    const snapshot = this.redoStack.pop()
+    this._restoreSnapshot(snapshot)
+    if (this.onHistoryChange) {
+      this.onHistoryChange(this.canUndo(), this.canRedo())
+    }
+    return true
   }
 
   createPathGraphics() {
@@ -51,6 +175,7 @@ export class PathJudge {
     if (!cell || cell.isObstacle) return
     
     if (cell.isStart || (this.selectedPath.length === 0 && this.isValidStart(cell))) {
+      this._saveHistorySnapshot()
       this.isDrawing = true
       this.selectedPath = [cell]
       cell.isOnPath = true
@@ -73,8 +198,12 @@ export class PathJudge {
     if (this.selectedPath.length > 1) {
       const prevCell = this.selectedPath[this.selectedPath.length - 2]
       if (cell === prevCell) {
+        this._saveHistorySnapshot()
         const removedCell = this.selectedPath.pop()
         removedCell.isOnPath = false
+        if (removedCell.plantSprite) {
+          this.plantState.lightOff(removedCell.plantSprite)
+        }
         this.updatePathDisplay()
         this.unhighlightCell(removedCell)
         return
@@ -84,6 +213,7 @@ export class PathJudge {
     if (this.selectedPath.includes(cell)) return
     
     if (this.levelMap.areAdjacent(lastCell, cell)) {
+      this._saveHistorySnapshot()
       cell.isOnPath = true
       this.selectedPath.push(cell)
       this.updatePathDisplay()
@@ -279,12 +409,18 @@ export class PathJudge {
     
     this.selectedPath = []
     this.isDrawing = false
+    this.historyStack = []
+    this.redoStack = []
     
     if (this.pathGraphics) {
       this.pathGraphics.clear()
     }
     
     this.plantState.resetAll()
+    
+    if (this.onHistoryChange) {
+      this.onHistoryChange(this.canUndo(), this.canRedo())
+    }
   }
 
   getPathLength() {

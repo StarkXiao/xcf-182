@@ -25,6 +25,10 @@ export class HintPanel {
     this.themePanel = null
     this.themeButtons = []
     this.leaderboardService = null
+    this.onUndo = null
+    this.onRedo = null
+    this.undoBtn = null
+    this.redoBtn = null
     
     this.themeManager = ThemeManager.getInstance()
     this.themeManager.loadThemeFromStorage()
@@ -470,6 +474,60 @@ export class HintPanel {
     
     this.randomButtons.forEach(b => b.destroy())
     this.randomButtons = []
+    
+    const undoBtn = this.scene.add.text(width - 220, height - 40, '↩ 撤回', {
+      fontSize: '16px',
+      fill: '#9ca3af',
+      fontStyle: 'bold',
+      backgroundColor: '#1e293b',
+      padding: { x: 12, y: 8 }
+    })
+    undoBtn.setOrigin(1, 0.5)
+    undoBtn.setDepth(101)
+    undoBtn.setInteractive({ useHandCursor: true })
+    
+    undoBtn.on('pointerdown', () => {
+      if (this.onUndo) {
+        this.onUndo()
+      }
+    })
+    
+    undoBtn.on('pointerover', () => {
+      undoBtn.setBackgroundColor('#334155')
+    })
+    undoBtn.on('pointerout', () => {
+      undoBtn.setBackgroundColor('#1e293b')
+    })
+    
+    this.randomButtons.push(undoBtn)
+    this.undoBtn = undoBtn
+    
+    const redoBtn = this.scene.add.text(width - 160, height - 40, '↪ 重做', {
+      fontSize: '16px',
+      fill: '#9ca3af',
+      fontStyle: 'bold',
+      backgroundColor: '#1e293b',
+      padding: { x: 12, y: 8 }
+    })
+    redoBtn.setOrigin(1, 0.5)
+    redoBtn.setDepth(101)
+    redoBtn.setInteractive({ useHandCursor: true })
+    
+    redoBtn.on('pointerdown', () => {
+      if (this.onRedo) {
+        this.onRedo()
+      }
+    })
+    
+    redoBtn.on('pointerover', () => {
+      redoBtn.setBackgroundColor('#334155')
+    })
+    redoBtn.on('pointerout', () => {
+      redoBtn.setBackgroundColor('#1e293b')
+    })
+    
+    this.randomButtons.push(redoBtn)
+    this.redoBtn = redoBtn
     
     const hintBtn = this.scene.add.text(width - 100, height - 40, '💡 提示', {
       fontSize: '16px',
@@ -1010,6 +1068,23 @@ export class HintPanel {
           duration: 300
         })
       })
+    }
+  }
+
+  updateUndoRedoButtons(canUndo, canRedo) {
+    if (this.undoBtn) {
+      this.undoBtn.setColor(canUndo ? '#e2e8f0' : '#475569')
+      this.undoBtn.setBackgroundColor(canUndo ? '#1e293b' : '#0f172a')
+      if (this.undoBtn.input) {
+        this.undoBtn.input.enabled = canUndo
+      }
+    }
+    if (this.redoBtn) {
+      this.redoBtn.setColor(canRedo ? '#e2e8f0' : '#475569')
+      this.redoBtn.setBackgroundColor(canRedo ? '#1e293b' : '#0f172a')
+      if (this.redoBtn.input) {
+        this.redoBtn.input.enabled = canRedo
+      }
     }
   }
 
