@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
 import { GameScene } from './scenes/GameScene.js'
+import { DialogueScene } from './scenes/DialogueScene.js'
 import { getActiveThemeColors } from './data/dailyChallenge.js'
 
 export class Game {
@@ -15,6 +16,7 @@ export class Game {
     const height = window.innerHeight
     
     const gameScene = new GameScene()
+    const dialogueScene = new DialogueScene()
     
     const themeColors = getActiveThemeColors()
     gameScene.setThemeColors(themeColors)
@@ -28,13 +30,21 @@ export class Game {
       })
     }
     
+    if (this.options.isStoryMode) {
+      gameScene.setStoryModeConfig({
+        isStoryMode: true,
+        onStoryComplete: this.options.onStoryComplete,
+        onBackToStart: this.options.onBackToStart
+      })
+    }
+    
     const config = {
       type: Phaser.AUTO,
       width: width,
       height: height,
       parent: this.container,
       backgroundColor: '#0a0a1a',
-      scene: [gameScene],
+      scene: [gameScene, dialogueScene],
       scale: {
         mode: Phaser.Scale.RESIZE,
         autoCenter: Phaser.Scale.CENTER_BOTH

@@ -132,16 +132,11 @@ export class PlantState {
       const angle = (i / 6) * Math.PI * 2
       const x = Math.cos(angle) * 8
       const y = Math.sin(angle) * 8 - 2
-      
-      flower.beginPath()
-      flower.ellipse(x, y, 5, 8, angle, 0, Math.PI * 2)
-      flower.fill()
+      flower.fillCircle(x, y, 6)
     }
     
     flower.fillStyle(0xfbbf24, 1)
-    flower.beginPath()
-    flower.arc(0, -2, 5, 0, Math.PI * 2)
-    flower.fill()
+    flower.fillCircle(0, -2, 5)
     
     return flower
   }

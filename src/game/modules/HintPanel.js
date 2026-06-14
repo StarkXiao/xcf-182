@@ -12,10 +12,15 @@ export class HintPanel {
     this.attempts = 0
     this.score = 0
     this.isDailyChallengeMode = false
+    this.isStoryMode = false
   }
 
   setDailyChallengeMode(enabled) {
     this.isDailyChallengeMode = enabled
+  }
+
+  setStoryMode(enabled) {
+    this.isStoryMode = enabled
   }
 
   init(preserveScore = false) {
@@ -189,6 +194,16 @@ export class HintPanel {
       return
     }
 
+    if (this.isStoryMode) {
+      if (levelIndex >= LEVELS.length) return
+      const level = LEVELS[levelIndex]
+      if (this.levelInfo) {
+        this.levelInfo.setText(`📖 第 ${level.id} 章: ${level.name}`)
+        this.levelInfo.setColor('#a78bfa')
+      }
+      return
+    }
+
     if (levelIndex >= LEVELS.length) return
     
     const level = LEVELS[levelIndex]
@@ -278,7 +293,7 @@ export class HintPanel {
     }
   }
 
-  showLevelComplete(levelIndex, score, onNext) {
+  showLevelComplete(levelIndex, score, onNext, isStoryMode = false) {
     const width = this.scene.game.config.width
     const height = this.scene.game.config.height
     
@@ -290,20 +305,25 @@ export class HintPanel {
       width * 0.7, 250,
       0x0d1117, 0.95
     )
-    bg.setStrokeStyle(3, 0x22c55e, 0.8)
+    const strokeColor = isStoryMode ? 0xa78bfa : 0x22c55e
+    bg.setStrokeStyle(3, strokeColor, 0.8)
     panel.add(bg)
     
-    const title = this.scene.add.text(width / 2, height / 2 - 80, '🎉 关卡完成！', {
+    const titleText = isStoryMode ? '✨ 章节完成！' : '🎉 关卡完成！'
+    const titleFill = isStoryMode ? '#a78bfa' : '#22c55e'
+    const title = this.scene.add.text(width / 2, height / 2 - 80, titleText, {
       fontSize: '24px',
-      fill: '#22c55e',
+      fill: titleFill,
       fontStyle: 'bold'
     })
     title.setOrigin(0.5)
     panel.add(title)
     
-    const levelName = this.scene.add.text(width / 2, height / 2 - 40, `第 ${levelIndex + 1} 关`, {
+    const levelLabel = isStoryMode ? `第 ${levelIndex + 1} 章` : `第 ${levelIndex + 1} 关`
+    const levelFill = isStoryMode ? '#f472b6' : '#60a5fa'
+    const levelName = this.scene.add.text(width / 2, height / 2 - 40, levelLabel, {
       fontSize: '18px',
-      fill: '#60a5fa'
+      fill: levelFill
     })
     levelName.setOrigin(0.5)
     panel.add(levelName)
@@ -323,11 +343,18 @@ export class HintPanel {
     attemptsInfo.setOrigin(0.5)
     panel.add(attemptsInfo)
     
-    const nextBtn = this.scene.add.text(width / 2, height / 2 + 80, levelIndex < LEVELS.length - 1 ? '下一关 →' : '再玩一次', {
+    const nextBtnLabel = isStoryMode 
+      ? (levelIndex < LEVELS.length - 1 ? '继续剧情 →' : '再玩一次') 
+      : (levelIndex < LEVELS.length - 1 ? '下一关 →' : '再玩一次')
+    const btnFill = isStoryMode ? '#a78bfa' : '#22c55e'
+    const btnBg = isStoryMode ? '#4c1d95' : '#166534'
+    const btnBgHover = isStoryMode ? '#6d28d9' : '#15803d'
+    
+    const nextBtn = this.scene.add.text(width / 2, height / 2 + 80, nextBtnLabel, {
       fontSize: '18px',
-      fill: '#22c55e',
+      fill: btnFill,
       fontStyle: 'bold',
-      backgroundColor: '#166534',
+      backgroundColor: btnBg,
       padding: { x: 25, y: 10 }
     })
     nextBtn.setOrigin(0.5)
@@ -346,10 +373,10 @@ export class HintPanel {
     })
     
     nextBtn.on('pointerover', () => {
-      nextBtn.setBackgroundColor('#15803d')
+      nextBtn.setBackgroundColor(btnBgHover)
     })
     nextBtn.on('pointerout', () => {
-      nextBtn.setBackgroundColor('#166534')
+      nextBtn.setBackgroundColor(btnBg)
     })
     
     panel.add(nextBtn)

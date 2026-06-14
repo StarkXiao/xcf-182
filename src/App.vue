@@ -43,8 +43,11 @@
             </div>
             
             <div class="button-group">
+              <button @click="startStoryMode" class="story-btn">
+                📖 故事模式
+              </button>
               <button @click="startGame" class="start-btn">
-                🚀 开始冒险
+                🚀 自由冒险
               </button>
               <button @click="openDailyChallenge" class="daily-btn">
                 🔥 每日挑战
@@ -80,7 +83,31 @@ const startGame = () => {
   
   setTimeout(() => {
     if (gameContainer.value) {
-      gameInstance = new Game(gameContainer.value, { isDailyChallenge: false })
+      gameInstance = new Game(gameContainer.value, { 
+        isDailyChallenge: false,
+        isStoryMode: false 
+      })
+    }
+  }, 100)
+}
+
+const startStoryMode = () => {
+  showStartScreen.value = false
+  mode.value = 'game'
+  dailyChallengeLevel = null
+  
+  setTimeout(() => {
+    if (gameContainer.value) {
+      gameInstance = new Game(gameContainer.value, { 
+        isDailyChallenge: false,
+        isStoryMode: true,
+        onStoryComplete: (score) => {
+          console.log('故事模式完成，得分:', score)
+        },
+        onBackToStart: () => {
+          backToStart()
+        }
+      })
     }
   }, 100)
 }
@@ -102,6 +129,7 @@ const onStartDailyChallenge = (levelData) => {
     if (gameContainer.value) {
       gameInstance = new Game(gameContainer.value, {
         isDailyChallenge: true,
+        isStoryMode: false,
         dailyLevel: levelData,
         onDailyComplete: (score) => {
           markTodayCompleted(score)
@@ -293,6 +321,39 @@ onUnmounted(() => {
 
 .start-btn:active {
   transform: translateY(0);
+}
+
+.story-btn {
+  background: linear-gradient(135deg, #a78bfa 0%, #7c3aed 100%);
+  color: white;
+  border: none;
+  padding: 15px 50px;
+  font-size: 1.2rem;
+  font-weight: bold;
+  border-radius: 50px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(167, 139, 250, 0.4);
+  min-width: 240px;
+  animation: storyGlow 2s ease-in-out infinite alternate;
+}
+
+.story-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 25px rgba(167, 139, 250, 0.6);
+}
+
+.story-btn:active {
+  transform: translateY(0);
+}
+
+@keyframes storyGlow {
+  from {
+    box-shadow: 0 4px 15px rgba(167, 139, 250, 0.4);
+  }
+  to {
+    box-shadow: 0 4px 25px rgba(167, 139, 250, 0.7), 0 0 40px rgba(192, 132, 252, 0.2);
+  }
 }
 
 .editor-btn {
