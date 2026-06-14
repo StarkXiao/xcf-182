@@ -548,7 +548,7 @@ export class GameScene extends Phaser.Scene {
     const baseScore = 10
     let plantScore = baseScore
     if (this.currentCombo > 1) {
-      plantScore = baseScore * this.currentCombo
+      plantScore = baseScore * 2
     }
     this.comboScore += plantScore
     
