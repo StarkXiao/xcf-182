@@ -10,7 +10,9 @@
   },
   "dependencies": {
     "vue": "^3.4.0",
-    "phaser": "^3.80.0"
+    "phaser": "^3.80.0",
+    "leancloud-storage": "^4.15.0",
+    "@supabase/supabase-js": "^2.45.0"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.0.0",

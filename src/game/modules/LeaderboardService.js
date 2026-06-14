@@ -30,15 +30,6 @@ function generateRandomNickname() {
   return adj + creature + suffix
 }
 
-function safeDynamicImport(moduleName) {
-  try {
-    const fn = new Function('mod', 'return import(mod)')
-    return fn(moduleName)
-  } catch (e) {
-    return Promise.reject(e)
-  }
-}
-
 class LocalLeaderboardBackend {
   constructor() {
     this.loadFromStorage()
@@ -57,7 +48,7 @@ class LocalLeaderboardBackend {
     try {
       localStorage.setItem(STORAGE_KEY_LEADERBOARD, JSON.stringify(this.leaderboard))
     } catch (e) {
-      console.warn('Failed to save leaderboard to localStorage:', e)
+      console.warn('[Leaderboard] Failed to save local leaderboard:', e)
     }
   }
 
@@ -78,27 +69,22 @@ class LocalLeaderboardBackend {
     if (!this.leaderboard[key]) {
       this.leaderboard[key] = []
     }
-
     const entry = {
       nickname,
       score,
       time,
       timestamp: Date.now()
     }
-
     this.leaderboard[key].push(entry)
     this.leaderboard[key].sort((a, b) => {
       if (b.score !== a.score) return b.score - a.score
       return a.time - b.time
     })
     this.leaderboard[key] = this.leaderboard[key].slice(0, 100)
-    
     this.saveToStorage()
-    
     const rank = this.leaderboard[key].findIndex(
       e => e.timestamp === entry.timestamp
     ) + 1
-    
     return { success: true, rank, entry }
   }
 
@@ -114,257 +100,6 @@ class LocalLeaderboardBackend {
   }
 }
 
-class LeanCloudBackend {
-  constructor(appId, appKey, serverURL) {
-    this.appId = appId
-    this.appKey = appKey
-    this.serverURL = serverURL
-    this.initialized = false
-    this.AV = null
-  }
-
-  async init() {
-    if (this.initialized) return
-    
-    try {
-      const AV = await safeDynamicImport('leancloud-storage')
-      const AVLib = AV.default || AV
-      AVLib.init({
-        appId: this.appId,
-        appKey: this.appKey,
-        serverURL: this.serverURL
-      })
-      this.AV = AVLib
-      this.initialized = true
-    } catch (e) {
-      console.warn('LeanCloud init failed, falling back to local:', e)
-      throw e
-    }
-  }
-
-  async getTopScores(levelId, limit = 50) {
-    if (!this.initialized) await this.init()
-    
-    const query = new this.AV.Query('Leaderboard')
-    query.equalTo('levelId', String(levelId))
-    query.limit(limit)
-    query.addDescending('score')
-    query.addAscending('time')
-    
-    try {
-      const results = await query.find()
-      return results.map(item => ({
-        nickname: item.get('nickname'),
-        score: item.get('score'),
-        time: item.get('time'),
-        timestamp: item.get('createdAt').getTime()
-      }))
-    } catch (e) {
-      console.error('Failed to get top scores from LeanCloud:', e)
-      return []
-    }
-  }
-
-  async submitScore(levelId, nickname, score, time) {
-    if (!this.initialized) await this.init()
-    
-    try {
-      const Leaderboard = this.AV.Object.extend('Leaderboard')
-      const entry = new Leaderboard()
-      entry.set('levelId', String(levelId))
-      entry.set('nickname', nickname)
-      entry.set('score', score)
-      entry.set('time', time)
-      
-      const result = await entry.save()
-      
-      const query = new this.AV.Query('Leaderboard')
-      query.equalTo('levelId', String(levelId))
-      query.greaterThan('score', score)
-      const count = await query.count()
-      
-      const tieQuery = new this.AV.Query('Leaderboard')
-      tieQuery.equalTo('levelId', String(levelId))
-      tieQuery.equalTo('score', score)
-      tieQuery.lessThan('time', time)
-      const tieCount = await tieQuery.count()
-      
-      const rank = count + tieCount + 1
-      
-      return {
-        success: true,
-        rank,
-        entry: {
-          nickname,
-          score,
-          time,
-          timestamp: result.get('createdAt').getTime()
-        }
-      }
-    } catch (e) {
-      console.error('Failed to submit score to LeanCloud:', e)
-      throw e
-    }
-  }
-
-  async getUserBestScore(levelId, nickname) {
-    if (!this.initialized) await this.init()
-    
-    try {
-      const query = new this.AV.Query('Leaderboard')
-      query.equalTo('levelId', String(levelId))
-      query.equalTo('nickname', nickname)
-      query.addDescending('score')
-      query.addAscending('time')
-      query.limit(1)
-      
-      const results = await query.find()
-      if (results.length === 0) return null
-      
-      const item = results[0]
-      return {
-        nickname: item.get('nickname'),
-        score: item.get('score'),
-        time: item.get('time'),
-        timestamp: item.get('createdAt').getTime()
-      }
-    } catch (e) {
-      console.error('Failed to get user best score from LeanCloud:', e)
-      return null
-    }
-  }
-}
-
-class SupabaseBackend {
-  constructor(supabaseUrl, supabaseKey) {
-    this.supabaseUrl = supabaseUrl
-    this.supabaseKey = supabaseKey
-    this.supabase = null
-    this.initialized = false
-  }
-
-  async init() {
-    if (this.initialized) return
-    
-    try {
-      const mod = await safeDynamicImport('@supabase/supabase-js')
-      const { createClient } = mod
-      this.supabase = createClient(this.supabaseUrl, this.supabaseKey)
-      this.initialized = true
-    } catch (e) {
-      console.warn('Supabase init failed, falling back to local:', e)
-      throw e
-    }
-  }
-
-  async getTopScores(levelId, limit = 50) {
-    if (!this.initialized) await this.init()
-    
-    try {
-      const { data, error } = await this.supabase
-        .from('leaderboard')
-        .select('nickname, score, time, created_at')
-        .eq('level_id', String(levelId))
-        .order('score', { ascending: false })
-        .order('time', { ascending: true })
-        .limit(limit)
-      
-      if (error) throw error
-      
-      return data.map(item => ({
-        nickname: item.nickname,
-        score: item.score,
-        time: item.time,
-        timestamp: new Date(item.created_at).getTime()
-      }))
-    } catch (e) {
-      console.error('Failed to get top scores from Supabase:', e)
-      return []
-    }
-  }
-
-  async submitScore(levelId, nickname, score, time) {
-    if (!this.initialized) await this.init()
-    
-    try {
-      const { data, error } = await this.supabase
-        .from('leaderboard')
-        .insert([
-          {
-            level_id: String(levelId),
-            nickname,
-            score,
-            time
-          }
-        ])
-        .select()
-      
-      if (error) throw error
-      
-      const { count, error: rankError } = await this.supabase
-        .from('leaderboard')
-        .select('*', { count: 'exact', head: true })
-        .eq('level_id', String(levelId))
-        .gt('score', score)
-      
-      if (rankError) throw rankError
-      
-      const { count: tieCount, error: tieError } = await this.supabase
-        .from('leaderboard')
-        .select('*', { count: 'exact', head: true })
-        .eq('level_id', String(levelId))
-        .eq('score', score)
-        .lt('time', time)
-      
-      if (tieError) throw tieError
-      
-      const rank = (count || 0) + (tieCount || 0) + 1
-      
-      return {
-        success: true,
-        rank,
-        entry: {
-          nickname,
-          score,
-          time,
-          timestamp: new Date(data[0].created_at).getTime()
-        }
-      }
-    } catch (e) {
-      console.error('Failed to submit score to Supabase:', e)
-      throw e
-    }
-  }
-
-  async getUserBestScore(levelId, nickname) {
-    if (!this.initialized) await this.init()
-    
-    try {
-      const { data, error } = await this.supabase
-        .from('leaderboard')
-        .select('nickname, score, time, created_at')
-        .eq('level_id', String(levelId))
-        .eq('nickname', nickname)
-        .order('score', { ascending: false })
-        .order('time', { ascending: true })
-        .limit(1)
-      
-      if (error) throw error
-      if (data.length === 0) return null
-      
-      return {
-        nickname: data[0].nickname,
-        score: data[0].score,
-        time: data[0].time,
-        timestamp: new Date(data[0].created_at).getTime()
-      }
-    } catch (e) {
-      console.error('Failed to get user best score from Supabase:', e)
-      return null
-    }
-  }
-}
-
 class LeaderboardService {
   constructor() {
     this.backendType = 'local'
@@ -374,6 +109,7 @@ class LeaderboardService {
     this.localBackend = new LocalLeaderboardBackend()
     this.nickname = null
     this.loadNickname()
+    this._adapterModules = null
     this.initBackend()
   }
 
@@ -395,7 +131,7 @@ class LeaderboardService {
     try {
       localStorage.setItem(STORAGE_KEY_NICKNAME, this.nickname)
     } catch (e) {
-      console.warn('Failed to save nickname:', e)
+      console.warn('[Leaderboard] Failed to save nickname:', e)
     }
   }
 
@@ -420,6 +156,32 @@ class LeaderboardService {
 
   isCloudBackend() {
     return this.backendType === 'leancloud' || this.backendType === 'supabase'
+  }
+
+  async _loadAdapters() {
+    if (this._adapterModules) return this._adapterModules
+    try {
+      const adapters = {}
+      try {
+        const mod = await import('./backends/LeanCloudBackend.js')
+        adapters.leancloud = mod.LeanCloudBackend
+        console.log('[Leaderboard] LeanCloud adapter loaded')
+      } catch (e) {
+        console.log('[Leaderboard] LeanCloud adapter not available (dependency not installed)')
+      }
+      try {
+        const mod = await import('./backends/SupabaseBackend.js')
+        adapters.supabase = mod.SupabaseBackend
+        console.log('[Leaderboard] Supabase adapter loaded')
+      } catch (e) {
+        console.log('[Leaderboard] Supabase adapter not available (dependency not installed)')
+      }
+      this._adapterModules = adapters
+      return adapters
+    } catch (e) {
+      console.warn('[Leaderboard] Failed to load adapters:', e)
+      return {}
+    }
   }
 
   async ensureBackendReady() {
@@ -449,30 +211,34 @@ class LeaderboardService {
       return true
     }
 
-    if (targetType === 'leancloud' && isLeanCloudConfigured()) {
+    const adapters = await this._loadAdapters()
+
+    if (targetType === 'leancloud' && adapters.leancloud && isLeanCloudConfigured()) {
       try {
-        const config = CLOUD_CONFIG.leancloud
-        const backend = new LeanCloudBackend(config.appId, config.appKey, config.serverURL)
+        const cfg = CLOUD_CONFIG.leancloud
+        const BackendClass = adapters.leancloud
+        const backend = new BackendClass(cfg.appId, cfg.appKey, cfg.serverURL)
         await backend.init()
         this.backend = backend
         this.backendType = 'leancloud'
         this.backendReady = true
-        console.log('[Leaderboard] LeanCloud backend connected successfully')
+        console.log('[Leaderboard] ✅ LeanCloud backend connected')
         return true
       } catch (e) {
         console.warn('[Leaderboard] LeanCloud init failed, falling back to local:', e)
       }
     }
 
-    if (targetType === 'supabase' && isSupabaseConfigured()) {
+    if (targetType === 'supabase' && adapters.supabase && isSupabaseConfigured()) {
       try {
-        const config = CLOUD_CONFIG.supabase
-        const backend = new SupabaseBackend(config.url, config.anonKey)
+        const cfg = CLOUD_CONFIG.supabase
+        const BackendClass = adapters.supabase
+        const backend = new BackendClass(cfg.url, cfg.anonKey)
         await backend.init()
         this.backend = backend
         this.backendType = 'supabase'
         this.backendReady = true
-        console.log('[Leaderboard] Supabase backend connected successfully')
+        console.log('[Leaderboard] ✅ Supabase backend connected')
         return true
       } catch (e) {
         console.warn('[Leaderboard] Supabase init failed, falling back to local:', e)
@@ -482,6 +248,7 @@ class LeaderboardService {
     this.backend = this.localBackend
     this.backendType = 'local'
     this.backendReady = true
+    console.log('[Leaderboard] Using local storage backend')
     return false
   }
 
@@ -503,34 +270,35 @@ class LeaderboardService {
 
     if (type === 'local') {
       this.backend = this.localBackend
+      this.backendReady = true
       return true
     }
 
+    const adapters = await this._loadAdapters()
+
     try {
-      if (type === 'leancloud') {
-        const backend = new LeanCloudBackend(
-          config.appId,
-          config.appKey,
-          config.serverURL
-        )
+      if (type === 'leancloud' && adapters.leancloud) {
+        const BackendClass = adapters.leancloud
+        const backend = new BackendClass(config.appId, config.appKey, config.serverURL)
         await backend.init()
         this.backend = backend
+        this.backendReady = true
         return true
       }
 
-      if (type === 'supabase') {
-        const backend = new SupabaseBackend(
-          config.supabaseUrl,
-          config.supabaseKey
-        )
+      if (type === 'supabase' && adapters.supabase) {
+        const BackendClass = adapters.supabase
+        const backend = new BackendClass(config.supabaseUrl, config.supabaseKey)
         await backend.init()
         this.backend = backend
+        this.backendReady = true
         return true
       }
     } catch (e) {
-      console.warn('Backend switch failed, using local:', e)
+      console.warn('[Leaderboard] Backend switch failed, using local:', e)
       this.backend = this.localBackend
       this.backendType = 'local'
+      this.backendReady = true
       return false
     }
 
@@ -542,7 +310,7 @@ class LeaderboardService {
       await this.ensureBackendReady()
       return await this.backend.getTopScores(levelId, limit)
     } catch (e) {
-      console.error('Failed to get top scores:', e)
+      console.error('[Leaderboard] getTopScores failed, using local:', e)
       return await this.localBackend.getTopScores(levelId, limit)
     }
   }
@@ -556,7 +324,6 @@ class LeaderboardService {
         score,
         time
       )
-      
       if (this.backend !== this.localBackend) {
         try {
           await this.localBackend.submitScore(levelId, this.nickname, score, time)
@@ -564,10 +331,9 @@ class LeaderboardService {
           // ignore local sync error
         }
       }
-      
       return result
     } catch (e) {
-      console.error('Failed to submit score, using local:', e)
+      console.error('[Leaderboard] submitScore failed, using local:', e)
       return await this.localBackend.submitScore(levelId, this.nickname, score, time)
     }
   }
@@ -577,7 +343,7 @@ class LeaderboardService {
       await this.ensureBackendReady()
       return await this.backend.getUserBestScore(levelId, this.nickname)
     } catch (e) {
-      console.error('Failed to get user best score:', e)
+      console.error('[Leaderboard] getUserBestScore failed, using local:', e)
       return await this.localBackend.getUserBestScore(levelId, this.nickname)
     }
   }
