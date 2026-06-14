@@ -4,6 +4,7 @@ import { PlantState } from '../modules/PlantState.js'
 import { PathJudge } from '../modules/PathJudge.js'
 import { Effects } from '../modules/Effects.js'
 import { HintPanel } from '../modules/HintPanel.js'
+import { Tutorial } from '../modules/Tutorial.js'
 import { LEVELS, PLANT_TYPES } from '../data/levels.js'
 import { getDialogueForLevel, STORY_DIALOGUES } from '../data/story.js'
 import { getLeaderboardService } from '../modules/LeaderboardService.js'
@@ -34,6 +35,8 @@ export class GameScene extends Phaser.Scene {
     this.timerEvent = null
     this.isLevelActive = false
     this.leaderboardService = null
+    this.tutorial = null
+    this.isTutorialMode = false
   }
 
   setDailyChallengeConfig(config) {
@@ -187,7 +190,21 @@ export class GameScene extends Phaser.Scene {
     
     this.startLevelTimer()
     
-    if (this.isStoryMode && levelIndex >= 0) {
+    const shouldShowTutorial = levelIndex === 0 && 
+      !this.isDailyChallenge && 
+      !this.isRandomMode && 
+      Tutorial.shouldShowTutorial()
+    
+    if (shouldShowTutorial) {
+      this.isTutorialMode = true
+      this.pauseLevelTimer()
+      
+      this.showLevelIntro(level)
+      
+      this.time.delayedCall(2500, () => {
+        this.startTutorial()
+      })
+    } else if (this.isStoryMode && levelIndex >= 0) {
       const beforeDialogue = getDialogueForLevel(levelIndex, true)
       if (beforeDialogue) {
         this.showDialogue(beforeDialogue, () => {
@@ -202,6 +219,24 @@ export class GameScene extends Phaser.Scene {
       this.showLevelIntro(level)
       this.isAnimating = false
     }
+  }
+
+  startTutorial() {
+    if (!this.tutorial) {
+      this.tutorial = new Tutorial(
+        this,
+        this.levelMap,
+        this.pathJudge,
+        this.plantState,
+        this.effects
+      )
+    }
+    
+    this.tutorial.start(() => {
+      this.isTutorialMode = false
+      this.isAnimating = false
+      this.startLevelTimer()
+    })
   }
 
   showDialogue(dialogues, onComplete) {
@@ -291,7 +326,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   onPathComplete(path) {
-    if (this.isAnimating) return
+    if (this.isAnimating || this.isTutorialMode) return
     
     this.isAnimating = true
     if (this.isDailyChallenge) {
@@ -613,7 +648,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   resetLevel() {
-    if (this.isAnimating) return
+    if (this.isAnimating || this.isTutorialMode) return
     if (this.isDailyChallenge && this.dailyCompleted) return
     if (this.isStoryMode && this.storyCompleted) return
     
@@ -781,5 +816,6 @@ export class GameScene extends Phaser.Scene {
     if (this.pathJudge) this.pathJudge.destroy()
     if (this.effects) this.effects.destroy()
     if (this.hintPanel) this.hintPanel.destroy()
+    if (this.tutorial) this.tutorial.destroy()
   }
 }

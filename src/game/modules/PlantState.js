@@ -8,6 +8,7 @@ export class PlantState {
     this.plants = []
     this.litPlants = new Set()
     this.breathingTweens = []
+    this.pulseTweens = []
     
     this.themeManager = ThemeManager.getInstance()
     
@@ -831,12 +832,54 @@ export class PlantState {
     }
   }
 
+  pulsePlant(plant) {
+    if (!plant) return
+    
+    const pulseTween = this.scene.tweens.add({
+      targets: plant,
+      scale: { from: 1, to: 1.3, to: 1 },
+      duration: 800,
+      ease: 'Sine.easeInOut',
+      repeat: -1,
+      yoyo: true
+    })
+    
+    const glowPulse = this.scene.tweens.add({
+      targets: plant.glow,
+      alpha: { from: 0.3, to: 0.7, to: 0.3 },
+      scale: { from: 1, to: 1.5, to: 1 },
+      duration: 800,
+      ease: 'Sine.easeInOut',
+      repeat: -1,
+      yoyo: true
+    })
+    
+    this.pulseTweens.push(pulseTween, glowPulse)
+  }
+
+  stopAllPulses() {
+    this.pulseTweens.forEach(tween => tween.stop())
+    this.pulseTweens = []
+    
+    this.plants.forEach(plant => {
+      if (!plant.getData('isLit')) {
+        plant.setScale(1)
+        if (plant.glow) {
+          plant.glow.alpha = 0.3
+          plant.glow.scale = 1
+        }
+      }
+    })
+  }
+
   destroy() {
     if (this.themeUnsubscribe) {
       this.themeUnsubscribe()
     }
     this.breathingTweens.forEach(tween => tween.stop())
     this.breathingTweens = []
+    this.pulseTweens.forEach(tween => tween.stop())
+    this.pulseTweens = []
     this.plants = []
     this.litPlants.clear()
   }
