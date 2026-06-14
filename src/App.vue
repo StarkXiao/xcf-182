@@ -52,6 +52,23 @@
               <button @click="openDailyChallenge" class="daily-btn">
                 🔥 每日挑战
               </button>
+              <div class="random-section">
+                <button @click="startRandomMode" class="random-btn">
+                  🎲 随机挑战
+                </button>
+                <div class="difficulty-selector">
+                  <span class="diff-label">难度：</span>
+                  <button 
+                    v-for="n in 5" 
+                    :key="n" 
+                    class="diff-btn"
+                    :class="{ active: randomDifficulty === n }"
+                    @click="randomDifficulty = n"
+                  >
+                    {{ ['入门','简单','普通','困难','专家'][n-1] }}
+                  </button>
+                </div>
+              </div>
               <button @click="openEditor" class="editor-btn">
                 🎨 关卡编辑器
               </button>
@@ -73,6 +90,7 @@ import { generateDailyLevel, isTodayCompleted, markTodayCompleted } from './game
 const mode = ref('start')
 const gameContainer = ref(null)
 const showStartScreen = ref(true)
+const randomDifficulty = ref(3)
 let gameInstance = null
 let dailyChallengeLevel = null
 
@@ -104,6 +122,26 @@ const startStoryMode = () => {
         onStoryComplete: (score) => {
           console.log('故事模式完成，得分:', score)
         },
+        onBackToStart: () => {
+          backToStart()
+        }
+      })
+    }
+  }, 100)
+}
+
+const startRandomMode = () => {
+  showStartScreen.value = false
+  mode.value = 'game'
+  dailyChallengeLevel = null
+  
+  setTimeout(() => {
+    if (gameContainer.value) {
+      gameInstance = new Game(gameContainer.value, { 
+        isDailyChallenge: false,
+        isStoryMode: false,
+        isRandomMode: true,
+        difficulty: randomDifficulty.value,
         onBackToStart: () => {
           backToStart()
         }
@@ -377,6 +415,89 @@ onUnmounted(() => {
 
 .editor-btn:active {
   transform: translateY(0);
+}
+
+.random-section {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.random-btn {
+  background: linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%);
+  color: white;
+  border: none;
+  padding: 15px 50px;
+  font-size: 1.2rem;
+  font-weight: bold;
+  border-radius: 50px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(236, 72, 153, 0.4);
+  min-width: 240px;
+  animation: randomGlow 2s ease-in-out infinite alternate;
+}
+
+.random-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 25px rgba(236, 72, 153, 0.6);
+}
+
+.random-btn:active {
+  transform: translateY(0);
+}
+
+@keyframes randomGlow {
+  from {
+    box-shadow: 0 4px 15px rgba(236, 72, 153, 0.4);
+  }
+  to {
+    box-shadow: 0 4px 25px rgba(236, 72, 153, 0.7), 0 0 40px rgba(167, 139, 250, 0.3);
+  }
+}
+
+.difficulty-selector {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: center;
+  padding: 8px 16px;
+  background: rgba(13, 17, 23, 0.6);
+  border-radius: 25px;
+  border: 1px solid rgba(236, 72, 153, 0.2);
+}
+
+.diff-label {
+  font-size: 0.85rem;
+  color: #9ca3af;
+  margin-right: 4px;
+}
+
+.diff-btn {
+  background: transparent;
+  color: #9ca3af;
+  border: 1px solid rgba(75, 85, 99, 0.5);
+  padding: 4px 10px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border-radius: 15px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.diff-btn:hover {
+  border-color: rgba(236, 72, 153, 0.5);
+  color: #e5e7eb;
+}
+
+.diff-btn.active {
+  background: linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%);
+  color: white;
+  border-color: transparent;
+  box-shadow: 0 2px 8px rgba(236, 72, 153, 0.4);
 }
 
 .daily-btn {

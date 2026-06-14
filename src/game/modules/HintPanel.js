@@ -13,14 +13,28 @@ export class HintPanel {
     this.score = 0
     this.isDailyChallengeMode = false
     this.isStoryMode = false
+    this.isRandomMode = false
+    this.currentRandomLevel = null
+    this.randomButtons = []
   }
 
   setDailyChallengeMode(enabled) {
     this.isDailyChallengeMode = enabled
+    if (enabled) this.isRandomMode = false
   }
 
   setStoryMode(enabled) {
     this.isStoryMode = enabled
+    if (enabled) this.isRandomMode = false
+  }
+
+  setRandomMode(enabled, level = null) {
+    this.isRandomMode = enabled
+    this.currentRandomLevel = level
+    if (enabled) {
+      this.isDailyChallengeMode = false
+      this.isStoryMode = false
+    }
   }
 
   init(preserveScore = false) {
@@ -138,6 +152,9 @@ export class HintPanel {
     const width = this.scene.game.config.width
     const height = this.scene.game.config.height
     
+    this.randomButtons.forEach(b => b.destroy())
+    this.randomButtons = []
+    
     const hintBtn = this.scene.add.text(width - 100, height - 40, '💡 提示', {
       fontSize: '16px',
       fill: '#fbbf24',
@@ -160,29 +177,104 @@ export class HintPanel {
       hintBtn.setBackgroundColor('#1e3a5f')
     })
     
-    const resetBtn = this.scene.add.text(100, height - 40, '🔄 重置', {
-      fontSize: '16px',
-      fill: '#f87171',
-      fontStyle: 'bold',
-      backgroundColor: '#1e3a5f',
-      padding: { x: 15, y: 8 }
-    })
-    resetBtn.setOrigin(0, 0.5)
-    resetBtn.setDepth(101)
-    resetBtn.setInteractive({ useHandCursor: true })
+    this.randomButtons.push(hintBtn)
     
-    resetBtn.on('pointerdown', () => {
-      if (this.onReset) {
-        this.onReset()
+    if (this.isRandomMode) {
+      const diffLabels = ['入门', '简单', '普通', '困难', '专家']
+      const diffColors = ['#22c55e', '#84cc16', '#eab308', '#f97316', '#ef4444']
+      const diffBg = ['#14532d', '#3f6212', '#713f12', '#7c2d12', '#7f1d1d']
+      const diffHover = ['#166534', '#4d7c0f', '#854d0e', '#9a3412', '#991b1b']
+      
+      const btnWidth = 70
+      const startX = width / 2 - (btnWidth * 5 + 20) / 2
+      
+      for (let i = 0; i < 5; i++) {
+        const diffBtn = this.scene.add.text(
+          startX + i * (btnWidth + 5),
+          height - 40,
+          diffLabels[i],
+          {
+            fontSize: '13px',
+            fill: diffColors[i],
+            fontStyle: 'bold',
+            backgroundColor: diffBg[i],
+            padding: { x: 10, y: 8 }
+          }
+        )
+        diffBtn.setOrigin(0, 0.5)
+        diffBtn.setDepth(101)
+        diffBtn.setInteractive({ useHandCursor: true })
+        
+        const diff = i + 1
+        diffBtn.on('pointerdown', () => {
+          if (this.onNextRandom) {
+            this.onNextRandom(diff)
+          }
+        })
+        
+        diffBtn.on('pointerover', () => {
+          diffBtn.setBackgroundColor(diffHover[i])
+        })
+        diffBtn.on('pointerout', () => {
+          diffBtn.setBackgroundColor(diffBg[i])
+        })
+        
+        this.randomButtons.push(diffBtn)
       }
-    })
-    
-    resetBtn.on('pointerover', () => {
-      resetBtn.setBackgroundColor('#dc2626')
-    })
-    resetBtn.on('pointerout', () => {
-      resetBtn.setBackgroundColor('#1e3a5f')
-    })
+      
+      const nextBtn = this.scene.add.text(100, height - 40, '🎲 新关卡', {
+        fontSize: '16px',
+        fill: '#60a5fa',
+        fontStyle: 'bold',
+        backgroundColor: '#1e3a5f',
+        padding: { x: 15, y: 8 }
+      })
+      nextBtn.setOrigin(0, 0.5)
+      nextBtn.setDepth(101)
+      nextBtn.setInteractive({ useHandCursor: true })
+      
+      nextBtn.on('pointerdown', () => {
+        if (this.onNextRandom) {
+          const curDiff = this.currentRandomLevel?.difficulty || 3
+          this.onNextRandom(curDiff)
+        }
+      })
+      
+      nextBtn.on('pointerover', () => {
+        nextBtn.setBackgroundColor('#2563eb')
+      })
+      nextBtn.on('pointerout', () => {
+        nextBtn.setBackgroundColor('#1e3a5f')
+      })
+      
+      this.randomButtons.push(nextBtn)
+    } else {
+      const resetBtn = this.scene.add.text(100, height - 40, '🔄 重置', {
+        fontSize: '16px',
+        fill: '#f87171',
+        fontStyle: 'bold',
+        backgroundColor: '#1e3a5f',
+        padding: { x: 15, y: 8 }
+      })
+      resetBtn.setOrigin(0, 0.5)
+      resetBtn.setDepth(101)
+      resetBtn.setInteractive({ useHandCursor: true })
+      
+      resetBtn.on('pointerdown', () => {
+        if (this.onReset) {
+          this.onReset()
+        }
+      })
+      
+      resetBtn.on('pointerover', () => {
+        resetBtn.setBackgroundColor('#dc2626')
+      })
+      resetBtn.on('pointerout', () => {
+        resetBtn.setBackgroundColor('#1e3a5f')
+      })
+      
+      this.randomButtons.push(resetBtn)
+    }
   }
 
   updateLevelInfo(levelIndex) {
@@ -190,6 +282,18 @@ export class HintPanel {
       if (this.levelInfo) {
         this.levelInfo.setText(`🔥 每日挑战`)
         this.levelInfo.setColor('#fbbf24')
+      }
+      return
+    }
+
+    if (this.isRandomMode && this.currentRandomLevel) {
+      const level = this.currentRandomLevel
+      const diffNames = ['', '入门', '简单', '普通', '困难', '专家']
+      const diffColors = ['', '#22c55e', '#84cc16', '#eab308', '#f97316', '#ef4444']
+      if (this.levelInfo) {
+        const seedStr = level.seed ? `[${level.seed}]` : ''
+        this.levelInfo.setText(`🎲 ${diffNames[level.difficulty]} · ${level.name} ${seedStr}`)
+        this.levelInfo.setColor(diffColors[level.difficulty] || '#60a5fa')
       }
       return
     }
@@ -230,6 +334,17 @@ export class HintPanel {
     if (this.isDailyChallengeMode) {
       if (this.hintText) {
         this.hintText.setText('仔细观察路线，避开障碍物，点亮更多植物获得高分！')
+      }
+      this.show()
+      if (this.onShowHint) {
+        this.onShowHint()
+      }
+      return
+    }
+
+    if (this.isRandomMode && this.currentRandomLevel) {
+      if (this.hintText) {
+        this.hintText.setText(this.currentRandomLevel.hint)
       }
       this.show()
       if (this.onShowHint) {
@@ -293,7 +408,7 @@ export class HintPanel {
     }
   }
 
-  showLevelComplete(levelIndex, score, onNext, isStoryMode = false) {
+  showLevelComplete(levelIndex, score, onNext, isStoryMode = false, isRandomMode = false) {
     const width = this.scene.game.config.width
     const height = this.scene.game.config.height
     
@@ -305,12 +420,22 @@ export class HintPanel {
       width * 0.7, 250,
       0x0d1117, 0.95
     )
-    const strokeColor = isStoryMode ? 0xa78bfa : 0x22c55e
+    let strokeColor = 0x22c55e
+    if (isStoryMode) strokeColor = 0xa78bfa
+    if (isRandomMode) strokeColor = 0xec4899
     bg.setStrokeStyle(3, strokeColor, 0.8)
     panel.add(bg)
     
-    const titleText = isStoryMode ? '✨ 章节完成！' : '🎉 关卡完成！'
-    const titleFill = isStoryMode ? '#a78bfa' : '#22c55e'
+    let titleText = '🎉 关卡完成！'
+    let titleFill = '#22c55e'
+    if (isStoryMode) {
+      titleText = '✨ 章节完成！'
+      titleFill = '#a78bfa'
+    }
+    if (isRandomMode) {
+      titleText = '🎲 随机挑战完成！'
+      titleFill = '#ec4899'
+    }
     const title = this.scene.add.text(width / 2, height / 2 - 80, titleText, {
       fontSize: '24px',
       fill: titleFill,
@@ -319,8 +444,17 @@ export class HintPanel {
     title.setOrigin(0.5)
     panel.add(title)
     
-    const levelLabel = isStoryMode ? `第 ${levelIndex + 1} 章` : `第 ${levelIndex + 1} 关`
-    const levelFill = isStoryMode ? '#f472b6' : '#60a5fa'
+    let levelLabel = `第 ${levelIndex + 1} 关`
+    let levelFill = '#60a5fa'
+    if (isStoryMode) {
+      levelLabel = `第 ${levelIndex + 1} 章`
+      levelFill = '#f472b6'
+    }
+    if (isRandomMode && this.currentRandomLevel) {
+      const diffNames = ['', '入门', '简单', '普通', '困难', '专家']
+      levelLabel = `${diffNames[this.currentRandomLevel.difficulty] || '随机'} 模式`
+      levelFill = '#ec4899'
+    }
     const levelName = this.scene.add.text(width / 2, height / 2 - 40, levelLabel, {
       fontSize: '18px',
       fill: levelFill
@@ -343,12 +477,26 @@ export class HintPanel {
     attemptsInfo.setOrigin(0.5)
     panel.add(attemptsInfo)
     
-    const nextBtnLabel = isStoryMode 
-      ? (levelIndex < LEVELS.length - 1 ? '继续剧情 →' : '再玩一次') 
-      : (levelIndex < LEVELS.length - 1 ? '下一关 →' : '再玩一次')
-    const btnFill = isStoryMode ? '#a78bfa' : '#22c55e'
-    const btnBg = isStoryMode ? '#4c1d95' : '#166534'
-    const btnBgHover = isStoryMode ? '#6d28d9' : '#15803d'
+    let nextBtnLabel = '下一关 →'
+    let btnFill = '#22c55e'
+    let btnBg = '#166534'
+    let btnBgHover = '#15803d'
+    
+    if (isStoryMode) {
+      nextBtnLabel = levelIndex < LEVELS.length - 1 ? '继续剧情 →' : '再玩一次'
+      btnFill = '#a78bfa'
+      btnBg = '#4c1d95'
+      btnBgHover = '#6d28d9'
+    } else if (!isStoryMode && !isRandomMode && levelIndex >= LEVELS.length - 1) {
+      nextBtnLabel = '再玩一次'
+    }
+    
+    if (isRandomMode) {
+      nextBtnLabel = '🎲 再来一个'
+      btnFill = '#ec4899'
+      btnBg = '#831843'
+      btnBgHover = '#9d174d'
+    }
     
     const nextBtn = this.scene.add.text(width / 2, height / 2 + 80, nextBtnLabel, {
       fontSize: '18px',

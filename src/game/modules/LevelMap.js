@@ -1,4 +1,5 @@
 import { LEVELS } from '../data/levels.js'
+import { LevelGenerator } from './LevelGenerator.js'
 
 const DEFAULT_THEME = {
   gridBg: 0x0d1117,
@@ -41,6 +42,13 @@ export class LevelMap {
       return null
     }
     this.currentLevel = JSON.parse(JSON.stringify(LEVELS[levelIndex]))
+    this.createGrid()
+    return this.currentLevel
+  }
+
+  loadRandomLevel(difficulty = 3, seed = null) {
+    const generator = new LevelGenerator(difficulty, seed)
+    this.currentLevel = generator.generate()
     this.createGrid()
     return this.currentLevel
   }

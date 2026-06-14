@@ -43,6 +43,13 @@ export class GameScene extends Phaser.Scene {
     this.onBackToStart = config.onBackToStart || null
   }
 
+  setRandomModeConfig(config) {
+    this.isRandomMode = config.isRandomMode || false
+    this.randomDifficulty = config.difficulty || 3
+    this.randomSeed = config.seed || null
+    this.onBackToStart = config.onBackToStart || null
+  }
+
   setThemeColors(colors) {
     this.themeColors = colors
   }
@@ -82,11 +89,35 @@ export class GameScene extends Phaser.Scene {
       this.hintPanel.setStoryMode(true)
     }
     
-    this.loadLevel(this.currentLevelIndex)
+    if (this.isRandomMode) {
+      this.loadRandomLevel(this.randomDifficulty, this.randomSeed)
+    } else {
+      this.loadLevel(this.currentLevelIndex)
+    }
+  }
+
+  loadRandomLevel(difficulty = 3, seed = null) {
+    this.isAnimating = true
+    this.isRandomMode = true
+    
+    if (this.creature) {
+      this.creature.destroy()
+      this.creature = null
+    }
+    
+    this.effects.createLevelTransition(() => {
+      this.children.removeAll()
+      
+      this.effects.init()
+      
+      const level = this.levelMap.loadRandomLevel(difficulty, seed)
+      this._setupLevelAfterLoad(level)
+    })
   }
 
   loadLevel(levelIndex) {
     this.isAnimating = true
+    this.isRandomMode = false
     
     if (this.creature) {
       this.creature.destroy()
@@ -104,53 +135,65 @@ export class GameScene extends Phaser.Scene {
         return
       }
       
-      this.levelMap.render()
-      this.plantState.init()
-      this.pathJudge.init()
-      
-      const hasExistingScore = this.hintPanel && this.hintPanel.getScore() > 0
-      this.hintPanel.init(hasExistingScore)
-      this.hintPanel.setCurrentLevelIndex(levelIndex)
-      this.hintPanel.reset()
-      
-      if (this.isDailyChallenge) {
-        this.hintPanel.setDailyChallengeMode(true)
+      this._setupLevelAfterLoad(level, levelIndex)
+    })
+  }
+
+  _setupLevelAfterLoad(level, levelIndex = -1) {
+    this.levelMap.render()
+    this.plantState.init()
+    this.pathJudge.init()
+    
+    const hasExistingScore = this.hintPanel && this.hintPanel.getScore() > 0
+    this.hintPanel.init(hasExistingScore)
+    this.hintPanel.setCurrentLevelIndex(levelIndex >= 0 ? levelIndex : this.currentLevelIndex)
+    this.hintPanel.reset()
+    
+    if (this.isDailyChallenge) {
+      this.hintPanel.setDailyChallengeMode(true)
+    }
+    
+    if (this.isStoryMode) {
+      this.hintPanel.setStoryMode(true)
+    }
+    
+    if (this.isRandomMode) {
+      this.hintPanel.setRandomMode(true, level)
+    }
+    
+    this.hintPanel.onReset = () => this.resetLevel()
+    this.hintPanel.onShowHint = () => {
+      if (this.pathJudge) {
+        this.pathJudge.showHint()
       }
-      
-      if (this.isStoryMode) {
-        this.hintPanel.setStoryMode(true)
-      }
-      
-      this.hintPanel.onReset = () => this.resetLevel()
-      this.hintPanel.onShowHint = () => {
-        if (this.pathJudge) {
-          this.pathJudge.showHint()
-        }
-      }
-      
-      this.pathJudge.onPathComplete = (path) => this.onPathComplete(path)
-      this.pathJudge.onPathInvalid = () => this.onPathInvalid()
-      
-      const startPos = this.levelMap.getWorldPosition(level.start.row, level.start.col)
-      this.creature = this.effects.createCreatureSprite(startPos.x, startPos.y)
-      this.creature.setDepth(100)
-      
-      if (this.isStoryMode) {
-        const beforeDialogue = getDialogueForLevel(levelIndex, true)
-        if (beforeDialogue) {
-          this.showDialogue(beforeDialogue, () => {
-            this.showLevelIntro(level)
-            this.isAnimating = false
-          })
-        } else {
+    }
+    
+    this.hintPanel.onNextRandom = (diff) => {
+      this.loadRandomLevel(diff)
+    }
+    
+    this.pathJudge.onPathComplete = (path) => this.onPathComplete(path)
+    this.pathJudge.onPathInvalid = () => this.onPathInvalid()
+    
+    const startPos = this.levelMap.getWorldPosition(level.start.row, level.start.col)
+    this.creature = this.effects.createCreatureSprite(startPos.x, startPos.y)
+    this.creature.setDepth(100)
+    
+    if (this.isStoryMode && levelIndex >= 0) {
+      const beforeDialogue = getDialogueForLevel(levelIndex, true)
+      if (beforeDialogue) {
+        this.showDialogue(beforeDialogue, () => {
           this.showLevelIntro(level)
           this.isAnimating = false
-        }
+        })
       } else {
         this.showLevelIntro(level)
         this.isAnimating = false
       }
-    })
+    } else {
+      this.showLevelIntro(level)
+      this.isAnimating = false
+    }
   }
 
   showDialogue(dialogues, onComplete) {
@@ -265,6 +308,15 @@ export class GameScene extends Phaser.Scene {
           this.showDailyChallengeComplete(levelScore)
         } else if (this.isStoryMode) {
           this.handleStoryLevelComplete(levelScore)
+        } else if (this.isRandomMode) {
+          const curDiff = this.levelMap.currentLevel?.difficulty || 3
+          this.hintPanel.showLevelComplete(
+            this.currentLevelIndex,
+            levelScore,
+            () => this.loadRandomLevel(curDiff),
+            false,
+            true
+          )
         } else {
           this.hintPanel.showLevelComplete(
             this.currentLevelIndex,

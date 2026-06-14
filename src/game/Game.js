@@ -28,6 +28,13 @@ export class Game {
         onDailyComplete: this.options.onDailyComplete,
         onBackToStart: this.options.onBackToStart
       })
+    } else if (this.options.isRandomMode) {
+      gameScene.setRandomModeConfig({
+        isRandomMode: true,
+        difficulty: this.options.difficulty || 3,
+        seed: this.options.seed || null,
+        onBackToStart: this.options.onBackToStart
+      })
     }
     
     if (this.options.isStoryMode) {
