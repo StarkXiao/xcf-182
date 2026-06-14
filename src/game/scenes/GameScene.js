@@ -122,7 +122,16 @@ export class GameScene extends Phaser.Scene {
     } else if (this.isWorkshopMode) {
       this.loadWorkshopLevel()
     } else {
-      this.loadLevel(this.currentLevelIndex)
+      const isNormalMode = !this.isDailyChallenge && !this.isStoryMode
+      let startLevel = this.currentLevelIndex
+      if (isNormalMode && this.levelProgressManager) {
+        const highestUnlocked = this.levelProgressManager.getHighestUnlockedIndex()
+        startLevel = Math.min(this.currentLevelIndex, highestUnlocked)
+        if (startLevel !== this.currentLevelIndex) {
+          this.currentLevelIndex = startLevel
+        }
+      }
+      this.loadLevel(startLevel)
     }
   }
 
@@ -178,6 +187,21 @@ export class GameScene extends Phaser.Scene {
   }
 
   loadLevel(levelIndex) {
+    const isNormalMode = !this.isDailyChallenge && !this.isRandomMode && !this.isWorkshopMode && !this.isStoryMode
+    
+    if (isNormalMode && this.levelProgressManager) {
+      if (!this.levelProgressManager.isLevelUnlocked(levelIndex)) {
+        this.showLockNotification(levelIndex)
+        const fallbackIndex = Math.max(0, this.levelProgressManager.getHighestUnlockedIndex())
+        if (fallbackIndex !== levelIndex) {
+          this.time.delayedCall(500, () => {
+            this.loadLevel(fallbackIndex)
+          })
+        }
+        return
+      }
+    }
+    
     this.isAnimating = true
     this.isRandomMode = false
     
@@ -200,6 +224,72 @@ export class GameScene extends Phaser.Scene {
       }
       
       this._setupLevelAfterLoad(level, levelIndex)
+    })
+  }
+
+  showLockNotification(levelIndex) {
+    const width = this.game.config.width
+    const height = this.game.config.height
+    
+    const levelNum = levelIndex + 1
+    const prevLevelNum = levelIndex
+    let lockMsg = `🔒 第 ${levelNum} 关未解锁`
+    let hintMsg = `完成第 ${prevLevelNum} 关并获得至少1星后解锁`
+    
+    const notify = this.add.container(0, 0)
+    notify.setDepth(500)
+    
+    const bg = this.add.rectangle(
+      width / 2, height / 2,
+      width * 0.7, 160,
+      0x0d1117, 0.95
+    )
+    bg.setStrokeStyle(3, 0xef4444, 0.9)
+    notify.add(bg)
+    
+    const icon = this.add.text(width / 2, height / 2 - 40, '🔒', {
+      fontSize: '36px'
+    })
+    icon.setOrigin(0.5)
+    notify.add(icon)
+    
+    const title = this.add.text(width / 2, height / 2 + 5, lockMsg, {
+      fontSize: '20px',
+      fill: '#ef4444',
+      fontStyle: 'bold'
+    })
+    title.setOrigin(0.5)
+    notify.add(title)
+    
+    const hint = this.add.text(width / 2, height / 2 + 38, hintMsg, {
+      fontSize: '14px',
+      fill: '#9ca3af',
+      align: 'center'
+    })
+    hint.setOrigin(0.5)
+    notify.add(hint)
+    
+    notify.setAlpha(0)
+    notify.setScale(0.8)
+    
+    this.tweens.add({
+      targets: notify,
+      alpha: 1,
+      scale: 1,
+      duration: 300,
+      ease: 'Back.out'
+    })
+    
+    this.tweens.add({
+      targets: notify,
+      alpha: 0,
+      scale: 0.9,
+      duration: 300,
+      ease: 'Cubic.In',
+      delay: 2200,
+      onComplete: () => {
+        notify.destroy()
+      }
     })
   }
 
@@ -854,7 +944,17 @@ export class GameScene extends Phaser.Scene {
   }
 
   nextLevel() {
-    this.currentLevelIndex++
+    const nextIndex = this.currentLevelIndex + 1
+    const isNormalMode = !this.isDailyChallenge && !this.isRandomMode && !this.isWorkshopMode
+    
+    if (isNormalMode && this.levelProgressManager && nextIndex < LEVELS.length) {
+      if (!this.levelProgressManager.isLevelUnlocked(nextIndex)) {
+        this.showLockNotification(nextIndex)
+        return
+      }
+    }
+    
+    this.currentLevelIndex = nextIndex
     if (this.currentLevelIndex >= LEVELS.length) {
       if (this.isStoryMode) {
         this.storyCompleted = true
