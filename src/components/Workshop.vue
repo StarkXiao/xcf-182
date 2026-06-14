@@ -89,6 +89,10 @@ const props = defineProps({
   uploadSuccess: {
     type: Boolean,
     default: false
+  },
+  playLevelId: {
+    type: String,
+    default: null
   }
 })
 
@@ -131,6 +135,30 @@ const backendTypeClass = computed(() => ({
   'type-leancloud': backendType.value === 'leancloud',
   'type-supabase': backendType.value === 'supabase'
 }))
+
+function applyCurrentSort(list) {
+  const sorted = [...list]
+  const sort = currentSort.value
+  if (sort === 'hot') {
+    sorted.sort((a, b) => {
+      const aScore = (a.hotScore != null) ? a.hotScore : (a.likesCount * 3 + a.playsCount)
+      const bScore = (b.hotScore != null) ? b.hotScore : (b.likesCount * 3 + b.playsCount)
+      if (bScore !== aScore) return bScore - aScore
+      return b.createdAt - a.createdAt
+    })
+  } else if (sort === 'newest') {
+    sorted.sort((a, b) => b.createdAt - a.createdAt)
+  } else if (sort === 'most_liked') {
+    sorted.sort((a, b) => b.likesCount - a.likesCount || b.createdAt - a.createdAt)
+  } else if (sort === 'most_played') {
+    sorted.sort((a, b) => b.playsCount - a.playsCount || b.createdAt - a.createdAt)
+  }
+  return sorted
+}
+
+function reorderLevels() {
+  levels.value = applyCurrentSort(levels.value)
+}
 
 async function loadLevels() {
   loading.value = true
@@ -175,6 +203,21 @@ function handleLikeChanged(levelId, isLiked) {
     level.likesCount += isLiked ? 1 : -1
     level.hotScore = level.likesCount * 3 + level.playsCount
   }
+  
+  if (currentSort.value === 'hot' || currentSort.value === 'most_liked') {
+    reorderLevels()
+  }
+}
+
+function handlePlayCountIncremented(levelId) {
+  const level = levels.value.find(l => l.id === levelId)
+  if (level) {
+    level.playsCount++
+    level.hotScore = level.likesCount * 3 + level.playsCount
+    if (currentSort.value === 'hot' || currentSort.value === 'most_played') {
+      reorderLevels()
+    }
+  }
 }
 
 function showToast(message) {
@@ -193,6 +236,12 @@ watch(() => props.uploadSuccess, (newVal) => {
   if (newVal) {
     showToast('关卡上传成功！')
     loadLevels()
+  }
+})
+
+watch(() => props.playLevelId, (newVal) => {
+  if (newVal) {
+    handlePlayCountIncremented(newVal)
   }
 })
 

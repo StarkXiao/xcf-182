@@ -21,6 +21,7 @@
       @openEditor="openEditorFromWorkshop"
       :refresh-trigger="workshopRefreshTrigger"
       :upload-success="uploadSuccessFlag"
+      :play-level-id="workshopPlayedLevelId"
     />
     <div v-else class="game-container">
       <div ref="gameContainer" id="phaser-game"></div>
@@ -121,6 +122,7 @@ const showStartScreen = ref(true)
 const randomDifficulty = ref(3)
 const workshopRefreshTrigger = ref(0)
 const uploadSuccessFlag = ref(false)
+const workshopPlayedLevelId = ref(null)
 let gameInstance = null
 let dailyChallengeLevel = null
 let currentWorkshopLevel = null
@@ -262,6 +264,9 @@ async function startWorkshopLevel(workshopLevel) {
   currentWorkshopLevel = workshopLevel
   
   await workshopService.incrementPlayCount(workshopLevel.id)
+  
+  workshopPlayedLevelId.value = workshopLevel.id
+  setTimeout(() => { workshopPlayedLevelId.value = null }, 0)
   
   const gameLevel = workshopService.convertToGameLevel(workshopLevel)
   
