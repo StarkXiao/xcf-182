@@ -1,3 +1,5 @@
+import { CLOUD_CONFIG, detectBackendType, isLeanCloudConfigured, isSupabaseConfigured } from '../../config/cloudConfig.js'
+
 const STORAGE_KEY_NICKNAME = 'moss_cave_nickname'
 const STORAGE_KEY_LEADERBOARD = 'moss_cave_leaderboard'
 const STORAGE_KEY_BACKEND_TYPE = 'moss_cave_backend_type'
@@ -367,6 +369,8 @@ class LeaderboardService {
   constructor() {
     this.backendType = 'local'
     this.backend = null
+    this.backendReady = false
+    this.backendPromise = null
     this.localBackend = new LocalLeaderboardBackend()
     this.nickname = null
     this.loadNickname()
@@ -414,16 +418,79 @@ class LeaderboardService {
     return this.backendType
   }
 
-  initBackend() {
+  isCloudBackend() {
+    return this.backendType === 'leancloud' || this.backendType === 'supabase'
+  }
+
+  async ensureBackendReady() {
+    if (this.backendReady) return true
+    if (this.backendPromise) return this.backendPromise
+    this.backendPromise = this._initBackendFromConfig()
+    return this.backendPromise
+  }
+
+  async _initBackendFromConfig() {
+    const detectedType = detectBackendType()
+    let targetType = detectedType
+
     try {
       const savedType = localStorage.getItem(STORAGE_KEY_BACKEND_TYPE)
-      if (savedType) {
-        this.backendType = savedType
+      if (savedType && ['local', 'leancloud', 'supabase'].includes(savedType)) {
+        targetType = savedType
       }
     } catch (e) {
       // ignore
     }
+
+    if (targetType === 'local') {
+      this.backend = this.localBackend
+      this.backendType = 'local'
+      this.backendReady = true
+      return true
+    }
+
+    if (targetType === 'leancloud' && isLeanCloudConfigured()) {
+      try {
+        const config = CLOUD_CONFIG.leancloud
+        const backend = new LeanCloudBackend(config.appId, config.appKey, config.serverURL)
+        await backend.init()
+        this.backend = backend
+        this.backendType = 'leancloud'
+        this.backendReady = true
+        console.log('[Leaderboard] LeanCloud backend connected successfully')
+        return true
+      } catch (e) {
+        console.warn('[Leaderboard] LeanCloud init failed, falling back to local:', e)
+      }
+    }
+
+    if (targetType === 'supabase' && isSupabaseConfigured()) {
+      try {
+        const config = CLOUD_CONFIG.supabase
+        const backend = new SupabaseBackend(config.url, config.anonKey)
+        await backend.init()
+        this.backend = backend
+        this.backendType = 'supabase'
+        this.backendReady = true
+        console.log('[Leaderboard] Supabase backend connected successfully')
+        return true
+      } catch (e) {
+        console.warn('[Leaderboard] Supabase init failed, falling back to local:', e)
+      }
+    }
+
     this.backend = this.localBackend
+    this.backendType = 'local'
+    this.backendReady = true
+    return false
+  }
+
+  initBackend() {
+    this.backend = this.localBackend
+    this._initBackendFromConfig().catch(() => {
+      this.backend = this.localBackend
+      this.backendReady = true
+    })
   }
 
   async switchBackend(type, config = {}) {
@@ -472,6 +539,7 @@ class LeaderboardService {
 
   async getTopScores(levelId, limit = 50) {
     try {
+      await this.ensureBackendReady()
       return await this.backend.getTopScores(levelId, limit)
     } catch (e) {
       console.error('Failed to get top scores:', e)
@@ -481,6 +549,7 @@ class LeaderboardService {
 
   async submitScore(levelId, score, time) {
     try {
+      await this.ensureBackendReady()
       const result = await this.backend.submitScore(
         levelId,
         this.nickname,
@@ -505,6 +574,7 @@ class LeaderboardService {
 
   async getUserBestScore(levelId) {
     try {
+      await this.ensureBackendReady()
       return await this.backend.getUserBestScore(levelId, this.nickname)
     } catch (e) {
       console.error('Failed to get user best score:', e)

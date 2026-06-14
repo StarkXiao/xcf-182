@@ -97,9 +97,16 @@
     </div>
 
     <div class="backend-info">
-      <span class="backend-label">数据存储：</span>
-      <span class="backend-type">{{ backendTypeLabel }}</span>
-      <span class="backend-hint" v-if="backendType === 'local'">(本地存储)</span>
+      <div class="backend-status">
+        <span class="status-dot" :class="backendStatusClass"></span>
+        <span class="backend-label">数据存储：</span>
+        <span class="backend-type" :class="backendTypeClass">{{ backendTypeLabel }}</span>
+        <span v-if="backendType !== 'local'" class="backend-cloud-tag">☁️ 云端同步</span>
+        <span v-else class="backend-local-tag">💾 本地存储</span>
+      </div>
+      <div class="backend-tip" v-if="backendType === 'local'">
+        <span>提示：复制 <code>.env.example</code> 为 <code>.env</code> 并配置云端密钥，即可启用云端排行榜</span>
+      </div>
     </div>
   </div>
 </template>
@@ -123,6 +130,7 @@ const nicknameInput = ref('')
 const currentNickname = ref('')
 
 const backendType = computed(() => leaderboardService.getBackendType())
+const isCloud = computed(() => leaderboardService.isCloudBackend())
 
 const backendTypeLabel = computed(() => {
   const labels = {
@@ -132,6 +140,17 @@ const backendTypeLabel = computed(() => {
   }
   return labels[backendType.value] || '本地存储'
 })
+
+const backendStatusClass = computed(() => ({
+  'status-online': isCloud.value,
+  'status-offline': !isCloud.value
+}))
+
+const backendTypeClass = computed(() => ({
+  'type-local': backendType.value === 'local',
+  'type-leancloud': backendType.value === 'leancloud',
+  'type-supabase': backendType.value === 'supabase'
+}))
 
 function formatTime(seconds) {
   return leaderboardService.formatTime(seconds)
@@ -188,10 +207,15 @@ function updateNickname() {
   }
 }
 
+async function ensureReadyAndLoad() {
+  await leaderboardService.ensureBackendReady()
+  loadLeaderboard()
+}
+
 onMounted(() => {
   currentNickname.value = leaderboardService.getNickname()
   nicknameInput.value = currentNickname.value
-  loadLeaderboard()
+  ensureReadyAndLoad()
 })
 </script>
 
@@ -587,12 +611,44 @@ onMounted(() => {
 .backend-info {
   flex-shrink: 0;
   display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: rgba(13, 17, 23, 0.8);
+  border-top: 1px solid rgba(96, 165, 250, 0.2);
+}
+
+.backend-status {
+  display: flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  padding: 12px;
-  background: rgba(13, 17, 23, 0.8);
-  border-top: 1px solid rgba(96, 165, 250, 0.2);
+  flex-wrap: wrap;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.status-dot.status-online {
+  background: #22c55e;
+  box-shadow: 0 0 6px rgba(34, 197, 94, 0.6);
+  animation: pulse-green 2s ease-in-out infinite;
+}
+
+.status-dot.status-offline {
+  background: #f59e0b;
+  box-shadow: 0 0 6px rgba(245, 158, 11, 0.4);
+}
+
+@keyframes pulse-green {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(1.2); }
 }
 
 .backend-label {
@@ -602,13 +658,52 @@ onMounted(() => {
 
 .backend-type {
   font-size: 12px;
-  color: #94a3b8;
   font-weight: 600;
 }
 
-.backend-hint {
+.backend-type.type-local {
+  color: #f59e0b;
+}
+
+.backend-type.type-leancloud {
+  color: #06b6d4;
+}
+
+.backend-type.type-supabase {
+  color: #10b981;
+}
+
+.backend-cloud-tag {
+  font-size: 11px;
+  color: #22c55e;
+  background: rgba(34, 197, 94, 0.1);
+  padding: 2px 8px;
+  border-radius: 4px;
+  border: 1px solid rgba(34, 197, 94, 0.2);
+}
+
+.backend-local-tag {
+  font-size: 11px;
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.1);
+  padding: 2px 8px;
+  border-radius: 4px;
+  border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+.backend-tip {
   font-size: 11px;
   color: #475569;
+  text-align: center;
+}
+
+.backend-tip code {
+  background: rgba(30, 41, 59, 0.8);
+  padding: 1px 6px;
+  border-radius: 3px;
+  color: #a78bfa;
+  font-size: 10px;
+  font-family: 'SF Mono', Monaco, monospace;
 }
 
 @media (max-width: 480px) {
