@@ -1,4 +1,5 @@
 import { LEVELS } from '../data/levels.js'
+import { ThemeManager } from './ThemeManager.js'
 
 export class HintPanel {
   constructor(scene) {
@@ -16,6 +17,11 @@ export class HintPanel {
     this.isRandomMode = false
     this.currentRandomLevel = null
     this.randomButtons = []
+    this.themePanel = null
+    this.themeButtons = []
+    
+    this.themeManager = ThemeManager.getInstance()
+    this.themeManager.loadThemeFromStorage()
   }
 
   setDailyChallengeMode(enabled) {
@@ -45,6 +51,7 @@ export class HintPanel {
     this.createTopBar()
     this.createHintPanel()
     this.createControlButtons()
+    this.createThemePanel()
     this.updateScoreDisplay()
   }
 
@@ -76,7 +83,7 @@ export class HintPanel {
     this.levelInfo.setOrigin(0, 0.5)
     this.levelInfo.setDepth(101)
     
-    this.scoreText = this.scene.add.text(width - 20, 25, '', {
+    this.scoreText = this.scene.add.text(width - 180, 25, '', {
       fontSize: '16px',
       fill: '#fbbf24',
       fontStyle: 'bold'
@@ -84,12 +91,293 @@ export class HintPanel {
     this.scoreText.setOrigin(1, 0.5)
     this.scoreText.setDepth(101)
     
-    this.attemptsText = this.scene.add.text(width - 20, 50, '', {
+    this.attemptsText = this.scene.add.text(width - 180, 50, '', {
       fontSize: '14px',
       fill: '#9ca3af'
     })
     this.attemptsText.setOrigin(1, 0.5)
     this.attemptsText.setDepth(101)
+    
+    const currentTheme = this.themeManager.getCurrentTheme()
+    const btnX = width - 90
+    const btnY = 35
+    const btnW = 90
+    const btnH = 44
+    
+    const themeBtnBg = this.scene.add.rectangle(btnX, btnY, btnW, btnH, 0x1e1b4b, 0.95)
+    themeBtnBg.setStrokeStyle(3, 0xa78bfa, 0.9)
+    themeBtnBg.setDepth(200)
+    themeBtnBg.setInteractive(new Phaser.Geom.Rectangle(-btnW / 2, -btnH / 2, btnW, btnH), Phaser.Geom.Rectangle.Contains)
+    themeBtnBg.input.cursor = 'pointer'
+    console.log('Theme button created at', btnX, btnY, 'size:', btnW, btnH)
+    
+    const themeBtn = this.scene.add.text(btnX, btnY, `🎨 ${currentTheme.icon}`, {
+      fontSize: '18px',
+      fill: '#a78bfa',
+      fontStyle: 'bold'
+    })
+    themeBtn.setOrigin(0.5, 0.5)
+    themeBtn.setDepth(201)
+    
+    themeBtnBg.on('pointerdown', (pointer) => {
+      console.log('Theme button clicked! pointer:', pointer.x, pointer.y)
+      this.toggleThemePanel()
+    })
+    
+    themeBtnBg.on('pointerover', () => {
+      console.log('Theme button pointerover')
+      themeBtnBg.setFillStyle(0x3b0764, 0.95)
+    })
+    themeBtnBg.on('pointerout', () => {
+      themeBtnBg.setFillStyle(0x1e1b4b, 0.95)
+    })
+    
+    this.themeToggleBtn = themeBtn
+    this.themeToggleBtnBg = themeBtnBg
+  }
+
+  createThemePanel() {
+    const width = this.scene.game.config.width
+    const height = this.scene.game.config.height
+    
+    this.themePanel = this.scene.add.container(0, 0)
+    this.themePanel.setDepth(500)
+    this.themePanel.setVisible(false)
+    
+    const panelWidth = 320
+    const panelHeight = 340
+    
+    const panelX = width - panelWidth / 2 - 20
+    const panelY = 120
+    
+    const bg = this.scene.add.rectangle(
+      panelX, panelY,
+      panelWidth, panelHeight,
+      0x0d1117, 0.98
+    )
+    bg.setStrokeStyle(2, 0xa78bfa, 0.9)
+    this.themePanel.add(bg)
+    
+    const title = this.scene.add.text(panelX, panelY - panelHeight / 2 + 25, '🎨 选择主题', {
+      fontSize: '20px',
+      fill: '#a78bfa',
+      fontStyle: 'bold'
+    })
+    title.setOrigin(0.5, 0.5)
+    this.themePanel.add(title)
+    
+    const subtitle = this.scene.add.text(panelX, panelY - panelHeight / 2 + 50, '切换洞穴风格主题', {
+      fontSize: '13px',
+      fill: '#94a3b8'
+    })
+    subtitle.setOrigin(0.5, 0.5)
+    this.themePanel.add(subtitle)
+    
+    const themes = this.themeManager.getAllThemes()
+    const btnWidth = panelWidth - 60
+    const btnHeight = 50
+    const startY = panelY - panelHeight / 2 + 80
+    
+    themes.forEach((theme, index) => {
+      const btnY = startY + index * (btnHeight + 12)
+      
+      const btnBg = this.scene.add.rectangle(
+        panelX, btnY,
+        btnWidth, btnHeight,
+        theme.grid.cell, 0.8
+      )
+      btnBg.setStrokeStyle(2, theme.grid.cellStroke, 0.8)
+      btnBg.setInteractive(new Phaser.Geom.Rectangle(-btnWidth / 2, -btnHeight / 2, btnWidth, btnHeight), Phaser.Geom.Rectangle.Contains)
+      if (btnBg.input) btnBg.input.cursor = 'pointer'
+      this.themePanel.add(btnBg)
+      
+      const iconText = this.scene.add.text(panelX - btnWidth / 2 + 25, btnY, theme.icon, {
+        fontSize: '22px'
+      })
+      iconText.setOrigin(0, 0.5)
+      this.themePanel.add(iconText)
+      
+      const nameText = this.scene.add.text(panelX - btnWidth / 2 + 60, btnY - 8, theme.name, {
+        fontSize: '15px',
+        fill: '#ffffff',
+        fontStyle: 'bold'
+      })
+      nameText.setOrigin(0, 0.5)
+      this.themePanel.add(nameText)
+      
+      const descY = btnY + 12
+      const dotColors = [
+        theme.plants.moss.color,
+        theme.plants.mushroom.color,
+        theme.plants.flower.color
+      ]
+      
+      for (let i = 0; i < 3; i++) {
+        const dot = this.scene.add.circle(
+          panelX - btnWidth / 2 + 60 + i * 18,
+          descY,
+          5,
+          dotColors[i],
+          0.9
+        )
+        this.themePanel.add(dot)
+      }
+      
+      const isCurrent = theme.id === this.themeManager.currentThemeId
+      if (isCurrent) {
+        const check = this.scene.add.text(panelX + btnWidth / 2 - 25, btnY, '✓', {
+          fontSize: '18px',
+          fill: '#22c55e',
+          fontStyle: 'bold'
+        })
+        check.setOrigin(0.5, 0.5)
+        this.themePanel.add(check)
+        btnBg.setStrokeStyle(3, theme.grid.endFill, 1)
+      }
+      
+      btnBg.on('pointerdown', () => {
+        if (theme.id !== this.themeManager.currentThemeId) {
+          this.switchTheme(theme.id)
+        }
+      })
+      
+      btnBg.on('pointerover', () => {
+        btnBg.setFillStyle(theme.grid.bgStroke, 0.9)
+      })
+      btnBg.on('pointerout', () => {
+        const isSelected = theme.id === this.themeManager.currentThemeId
+        btnBg.setFillStyle(theme.grid.cell, 0.8)
+      })
+      
+      this.themeButtons.push({
+        bg: btnBg,
+        theme: theme
+      })
+    })
+    
+    const tipText = this.scene.add.text(panelX, panelY + panelHeight / 2 - 20, '主题切换后所有元素将实时更新', {
+      fontSize: '11px',
+      fill: '#64748b'
+    })
+    tipText.setOrigin(0.5, 0.5)
+    this.themePanel.add(tipText)
+    
+    const closeTarget = this.scene.add.rectangle(
+      width / 2, height / 2,
+      width, height,
+      0x000000, 0.01
+    )
+    closeTarget.setDepth(499)
+    closeTarget.setInteractive(new Phaser.Geom.Rectangle(0, 0, width, height), Phaser.Geom.Rectangle.Contains)
+    closeTarget.setVisible(false)
+    closeTarget.on('pointerdown', () => {
+      this.hideThemePanel()
+    })
+    this.themePanelCloseMask = closeTarget
+  }
+
+  switchTheme(themeId) {
+    const changed = this.themeManager.setTheme(themeId)
+    if (changed) {
+      this.themeManager.saveThemeToStorage()
+      this.refreshThemePanel()
+      this.playThemeChangeEffect()
+      
+      const newTheme = this.themeManager.getCurrentTheme()
+      if (this.themeToggleBtn) {
+        this.themeToggleBtn.setText(`🎨 ${newTheme.icon}`)
+      }
+    }
+  }
+
+  refreshThemePanel() {
+    this.themeButtons.forEach(item => {
+      const theme = item.theme
+      const isCurrent = theme.id === this.themeManager.currentThemeId
+      if (isCurrent) {
+        item.bg.setStrokeStyle(3, theme.grid.endFill, 1)
+      } else {
+        item.bg.setStrokeStyle(2, theme.grid.cellStroke, 0.8)
+      }
+    })
+  }
+
+  playThemeChangeEffect() {
+    const width = this.scene.game.config.width
+    const height = this.scene.game.config.height
+    const currentTheme = this.themeManager.getCurrentTheme()
+    
+    for (let i = 0; i < 25; i++) {
+      this.scene.time.delayedCall(i * 30, () => {
+        const x = Math.random() * width
+        const y = Math.random() * height
+        const colors = Object.values(currentTheme.plants).map(p => p.glowColor)
+        const color = colors[Math.floor(Math.random() * colors.length)]
+        
+        this.scene.add.particles(x, y, 'sparkle', {
+          speed: { min: 50, max: 150 },
+          angle: { min: 0, max: 360 },
+          scale: { start: 0.5, end: 0 },
+          alpha: { start: 1, end: 0 },
+          lifespan: 700,
+          tint: color,
+          quantity: 8,
+          duration: 250,
+          blendMode: 'ADD'
+        })
+      })
+    }
+  }
+
+  toggleThemePanel() {
+    if (!this.themePanel) {
+      console.log('toggleThemePanel: themePanel is null')
+      return
+    }
+    console.log('toggleThemePanel: visible =', this.themePanel.visible)
+    if (this.themePanel.visible) {
+      this.hideThemePanel()
+    } else {
+      this.showThemePanel()
+    }
+  }
+
+  showThemePanel() {
+    if (!this.themePanel) {
+      console.log('showThemePanel: themePanel is null')
+      return
+    }
+    console.log('showThemePanel: showing')
+    
+    this.themePanelCloseMask.setVisible(true)
+    this.themePanel.setVisible(true)
+    this.themePanel.setAlpha(0)
+    this.themePanel.setScale(0.8)
+    
+    this.scene.tweens.add({
+      targets: this.themePanel,
+      alpha: 1,
+      scale: 1,
+      duration: 250,
+      ease: 'Back.out'
+    })
+  }
+
+  hideThemePanel() {
+    if (!this.themePanel) return
+    
+    this.themePanelCloseMask.setVisible(false)
+    
+    this.scene.tweens.add({
+      targets: this.themePanel,
+      alpha: 0,
+      scale: 0.8,
+      duration: 150,
+      ease: 'Cubic.In',
+      onComplete: () => {
+        this.themePanel.setVisible(false)
+      }
+    })
   }
 
   createHintPanel() {
@@ -663,6 +951,12 @@ export class HintPanel {
   destroy() {
     if (this.panel) {
       this.panel.destroy()
+    }
+    if (this.themePanel) {
+      this.themePanel.destroy()
+    }
+    if (this.themePanelCloseMask) {
+      this.themePanelCloseMask.destroy()
     }
   }
 }

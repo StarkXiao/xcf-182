@@ -3,6 +3,7 @@ import { LevelMap } from '../modules/LevelMap.js'
 import { PlantState } from '../modules/PlantState.js'
 import { Effects } from '../modules/Effects.js'
 import { LEVELS } from '../data/levels.js'
+import { ThemeManager } from '../modules/ThemeManager.js'
 
 const PLAYER1_COLORS = {
   primary: 0x3b82f6,
@@ -239,8 +240,10 @@ class PlayerPathJudge {
 
   unhighlightCell(cell) {
     if (cell.sprite) {
-      cell.sprite.setFillStyle(0x1a1f2e, 0.6)
-      cell.sprite.setStrokeStyle(1, 0x2d3748, 0.5)
+      const themeManager = ThemeManager.getInstance()
+      const gridTheme = themeManager.getGridColors()
+      cell.sprite.setFillStyle(gridTheme.cell, 0.6)
+      cell.sprite.setStrokeStyle(1, gridTheme.cellStroke, 0.5)
     }
   }
 
@@ -465,6 +468,11 @@ export class VersusScene extends Phaser.Scene {
     this.winner = null
     this.onBackToStart = null
     this.isAnimating = false
+    this.themePanel = null
+    this.themeButtons = []
+    
+    this.themeManager = ThemeManager.getInstance()
+    this.themeManager.loadThemeFromStorage()
   }
 
   setVersusConfig(config) {
@@ -483,12 +491,281 @@ export class VersusScene extends Phaser.Scene {
     this.createPlayerLabels()
     this.createTimerDisplay()
     this.createBackButton()
+    this.createThemeButton()
     
     this.startCountdown()
     
     this.input.on('pointerdown', this.onPointerDown, this)
     this.input.on('pointermove', this.onPointerMove, this)
     this.input.on('pointerup', this.onPointerUp, this)
+  }
+
+  createThemeButton() {
+    const width = this.game.config.width
+    const currentTheme = this.themeManager.getCurrentTheme()
+    
+    const themeBtn = this.add.text(width / 2, 100, `🎨 ${currentTheme.icon} 主题`, {
+      fontSize: '14px',
+      fill: '#a78bfa',
+      fontStyle: 'bold',
+      backgroundColor: '#1e1b4b',
+      padding: { x: 12, y: 6 }
+    })
+    themeBtn.setOrigin(0.5)
+    themeBtn.setDepth(101)
+    const themeBtnBounds = themeBtn.getBounds()
+    themeBtn.setInteractive(new Phaser.Geom.Rectangle(0, 0, themeBtnBounds.width, themeBtnBounds.height), Phaser.Geom.Rectangle.Contains)
+    themeBtn.input.cursor = 'pointer'
+    
+    themeBtn.on('pointerdown', () => {
+      this.toggleThemePanel()
+    })
+    
+    themeBtn.on('pointerover', () => {
+      themeBtn.setBackgroundColor('#3b0764')
+    })
+    themeBtn.on('pointerout', () => {
+      themeBtn.setBackgroundColor('#1e1b4b')
+    })
+    
+    this.themeToggleBtn = themeBtn
+    this.createThemePanel()
+  }
+
+  createThemePanel() {
+    const width = this.game.config.width
+    const height = this.game.config.height
+    
+    this.themePanel = this.add.container(0, 0)
+    this.themePanel.setDepth(500)
+    this.themePanel.setVisible(false)
+    
+    const panelWidth = 320
+    const panelHeight = 340
+    const panelX = width / 2
+    const panelY = height / 2
+    
+    const bg = this.add.rectangle(
+      panelX, panelY,
+      panelWidth, panelHeight,
+      0x0d1117, 0.98
+    )
+    bg.setStrokeStyle(2, 0xa78bfa, 0.9)
+    this.themePanel.add(bg)
+    
+    const title = this.add.text(panelX, panelY - panelHeight / 2 + 25, '🎨 选择主题', {
+      fontSize: '20px',
+      fill: '#a78bfa',
+      fontStyle: 'bold'
+    })
+    title.setOrigin(0.5, 0.5)
+    this.themePanel.add(title)
+    
+    const subtitle = this.add.text(panelX, panelY - panelHeight / 2 + 50, '切换洞穴风格主题', {
+      fontSize: '13px',
+      fill: '#94a3b8'
+    })
+    subtitle.setOrigin(0.5, 0.5)
+    this.themePanel.add(subtitle)
+    
+    const themes = this.themeManager.getAllThemes()
+    const btnWidth = panelWidth - 60
+    const btnHeight = 50
+    const startY = panelY - panelHeight / 2 + 80
+    
+    themes.forEach((theme, index) => {
+      const btnY = startY + index * (btnHeight + 12)
+      
+      const btnBg = this.add.rectangle(
+        panelX, btnY,
+        btnWidth, btnHeight,
+        theme.grid.cell, 0.8
+      )
+      btnBg.setStrokeStyle(2, theme.grid.cellStroke, 0.8)
+      btnBg.setInteractive(new Phaser.Geom.Rectangle(-btnWidth / 2, -btnHeight / 2, btnWidth, btnHeight), Phaser.Geom.Rectangle.Contains)
+      if (btnBg.input) btnBg.input.cursor = 'pointer'
+      this.themePanel.add(btnBg)
+      
+      const iconText = this.add.text(panelX - btnWidth / 2 + 25, btnY, theme.icon, {
+        fontSize: '22px'
+      })
+      iconText.setOrigin(0, 0.5)
+      this.themePanel.add(iconText)
+      
+      const nameText = this.add.text(panelX - btnWidth / 2 + 60, btnY - 8, theme.name, {
+        fontSize: '15px',
+        fill: '#ffffff',
+        fontStyle: 'bold'
+      })
+      nameText.setOrigin(0, 0.5)
+      this.themePanel.add(nameText)
+      
+      const descY = btnY + 12
+      const dotColors = [
+        theme.plants.moss.color,
+        theme.plants.mushroom.color,
+        theme.plants.flower.color
+      ]
+      
+      for (let i = 0; i < 3; i++) {
+        const dot = this.add.circle(
+          panelX - btnWidth / 2 + 60 + i * 18,
+          descY,
+          5,
+          dotColors[i],
+          0.9
+        )
+        this.themePanel.add(dot)
+      }
+      
+      const isCurrent = theme.id === this.themeManager.currentThemeId
+      if (isCurrent) {
+        const check = this.add.text(panelX + btnWidth / 2 - 25, btnY, '✓', {
+          fontSize: '18px',
+          fill: '#22c55e',
+          fontStyle: 'bold'
+        })
+        check.setOrigin(0.5, 0.5)
+        this.themePanel.add(check)
+        btnBg.setStrokeStyle(3, theme.grid.endFill, 1)
+      }
+      
+      btnBg.on('pointerdown', () => {
+        if (theme.id !== this.themeManager.currentThemeId) {
+          this.switchTheme(theme.id)
+        }
+      })
+      
+      btnBg.on('pointerover', () => {
+        btnBg.setFillStyle(theme.grid.bgStroke, 0.9)
+      })
+      btnBg.on('pointerout', () => {
+        const isSelected = theme.id === this.themeManager.currentThemeId
+        btnBg.setFillStyle(theme.grid.cell, 0.8)
+      })
+      
+      this.themeButtons.push({
+        bg: btnBg,
+        theme: theme
+      })
+    })
+    
+    const tipText = this.add.text(panelX, panelY + panelHeight / 2 - 20, '主题切换后所有元素将实时更新', {
+      fontSize: '11px',
+      fill: '#64748b'
+    })
+    tipText.setOrigin(0.5, 0.5)
+    this.themePanel.add(tipText)
+    
+    const closeTarget = this.add.rectangle(
+      width / 2, height / 2,
+      width, height,
+      0x000000, 0.01
+    )
+    closeTarget.setDepth(499)
+    closeTarget.setInteractive(new Phaser.Geom.Rectangle(0, 0, width, height), Phaser.Geom.Rectangle.Contains)
+    closeTarget.setVisible(false)
+    closeTarget.on('pointerdown', () => {
+      this.hideThemePanel()
+    })
+    this.themePanelCloseMask = closeTarget
+  }
+
+  switchTheme(themeId) {
+    const changed = this.themeManager.setTheme(themeId)
+    if (changed) {
+      this.themeManager.saveThemeToStorage()
+      this.refreshThemePanel()
+      this.playThemeChangeEffect()
+      
+      const newTheme = this.themeManager.getCurrentTheme()
+      if (this.themeToggleBtn) {
+        this.themeToggleBtn.setText(`🎨 ${newTheme.icon} 主题`)
+      }
+    }
+  }
+
+  refreshThemePanel() {
+    this.themeButtons.forEach(item => {
+      const theme = item.theme
+      const isCurrent = theme.id === this.themeManager.currentThemeId
+      if (isCurrent) {
+        item.bg.setStrokeStyle(3, theme.grid.endFill, 1)
+      } else {
+        item.bg.setStrokeStyle(2, theme.grid.cellStroke, 0.8)
+      }
+    })
+  }
+
+  playThemeChangeEffect() {
+    const width = this.game.config.width
+    const height = this.game.config.height
+    const currentTheme = this.themeManager.getCurrentTheme()
+    
+    for (let i = 0; i < 25; i++) {
+      this.time.delayedCall(i * 30, () => {
+        const x = Math.random() * width
+        const y = Math.random() * height
+        const colors = Object.values(currentTheme.plants).map(p => p.glowColor)
+        const color = colors[Math.floor(Math.random() * colors.length)]
+        
+        this.add.particles(x, y, 'sparkle', {
+          speed: { min: 50, max: 150 },
+          angle: { min: 0, max: 360 },
+          scale: { start: 0.5, end: 0 },
+          alpha: { start: 1, end: 0 },
+          lifespan: 700,
+          tint: color,
+          quantity: 8,
+          duration: 250,
+          blendMode: 'ADD'
+        })
+      })
+    }
+  }
+
+  toggleThemePanel() {
+    if (!this.themePanel) return
+    
+    if (this.themePanel.visible) {
+      this.hideThemePanel()
+    } else {
+      this.showThemePanel()
+    }
+  }
+
+  showThemePanel() {
+    if (!this.themePanel) return
+    
+    this.themePanelCloseMask.setVisible(true)
+    this.themePanel.setVisible(true)
+    this.themePanel.setAlpha(0)
+    this.themePanel.setScale(0.8)
+    
+    this.tweens.add({
+      targets: this.themePanel,
+      alpha: 1,
+      scale: 1,
+      duration: 250,
+      ease: 'Back.out'
+    })
+  }
+
+  hideThemePanel() {
+    if (!this.themePanel) return
+    
+    this.themePanelCloseMask.setVisible(false)
+    
+    this.tweens.add({
+      targets: this.themePanel,
+      alpha: 0,
+      scale: 0.8,
+      duration: 150,
+      ease: 'Cubic.In',
+      onComplete: () => {
+        this.themePanel.setVisible(false)
+      }
+    })
   }
 
   createDivider() {
@@ -672,21 +949,7 @@ export class VersusScene extends Phaser.Scene {
   initPlayer1() {
     const width = this.game.config.width
     
-    const p1Theme = {
-      gridBg: 0x0d1117,
-      gridBgStroke: 0x1e3a5f,
-      gridCell: 0x1a1f2e,
-      gridCellStroke: 0x2d3748,
-      obstacleFill: 0x374151,
-      obstacleStroke: 0x4b5563,
-      obstacleSpark: 0x6b7280,
-      startFill: 0x10b981,
-      startStroke: 0x34d399,
-      endFill: 0x3b82f6,
-      endStroke: 0x60a5fa
-    }
-    
-    this.player1.levelMap = new VersusLevelMap(this, p1Theme, 0, 0)
+    this.player1.levelMap = new VersusLevelMap(this, null, 0, 0)
     this.player1.levelMap.loadLevel(this.currentLevelIndex)
     this.player1.levelMap.render()
     
@@ -712,21 +975,7 @@ export class VersusScene extends Phaser.Scene {
   initPlayer2() {
     const width = this.game.config.width
     
-    const p2Theme = {
-      gridBg: 0x0d1117,
-      gridBgStroke: 0x831843,
-      gridCell: 0x1a1f2e,
-      gridCellStroke: 0x2d3748,
-      obstacleFill: 0x374151,
-      obstacleStroke: 0x4b5563,
-      obstacleSpark: 0x6b7280,
-      startFill: 0x10b981,
-      startStroke: 0x34d399,
-      endFill: 0xec4899,
-      endStroke: 0xf472b6
-    }
-    
-    this.player2.levelMap = new VersusLevelMap(this, p2Theme, width / 2, 0)
+    this.player2.levelMap = new VersusLevelMap(this, null, width / 2, 0)
     this.player2.levelMap.loadLevel(this.currentLevelIndex)
     this.player2.levelMap.render()
     
@@ -1190,6 +1439,9 @@ export class VersusScene extends Phaser.Scene {
       this.player1.plantState = null
     }
     if (this.player1.levelMap) {
+      if (this.player1.levelMap.destroy) {
+        this.player1.levelMap.destroy()
+      }
       this.player1.levelMap = null
     }
     if (this.player1.opponentPreview) {
@@ -1208,6 +1460,9 @@ export class VersusScene extends Phaser.Scene {
       this.player2.plantState = null
     }
     if (this.player2.levelMap) {
+      if (this.player2.levelMap.destroy) {
+        this.player2.levelMap.destroy()
+      }
       this.player2.levelMap = null
     }
     if (this.player2.opponentPreview) {
@@ -1236,6 +1491,13 @@ export class VersusScene extends Phaser.Scene {
     
     if (this.effects) {
       this.effects.destroy()
+    }
+    
+    if (this.themePanel) {
+      this.themePanel.destroy()
+    }
+    if (this.themePanelCloseMask) {
+      this.themePanelCloseMask.destroy()
     }
   }
 }

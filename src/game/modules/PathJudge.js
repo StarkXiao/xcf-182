@@ -1,3 +1,5 @@
+import { ThemeManager } from './ThemeManager.js'
+
 export class PathJudge {
   constructor(scene, levelMap, plantState) {
     this.scene = scene
@@ -9,6 +11,11 @@ export class PathJudge {
     this.pathGraphics = null
     this.onPathComplete = null
     this.onPathInvalid = null
+    
+    this.themeManager = ThemeManager.getInstance()
+    this.themeUnsubscribe = this.themeManager.onThemeChange((theme) => {
+      this.applyTheme(theme)
+    })
   }
 
   init() {
@@ -210,9 +217,20 @@ export class PathJudge {
 
   unhighlightCell(cell) {
     if (cell.sprite) {
-      cell.sprite.setFillStyle(0x1a1f2e, 0.6)
-      cell.sprite.setStrokeStyle(1, 0x2d3748, 0.5)
+      const gridTheme = this.themeManager.getGridColors()
+      cell.sprite.setFillStyle(gridTheme.cell, 0.6)
+      cell.sprite.setStrokeStyle(1, gridTheme.cellStroke, 0.5)
     }
+  }
+
+  applyTheme(theme) {
+    const gridTheme = theme.grid
+    this.selectedPath.forEach(cell => {
+      if (cell.sprite && !cell.isOnPath) {
+        cell.sprite.setFillStyle(gridTheme.cell, 0.6)
+        cell.sprite.setStrokeStyle(1, gridTheme.cellStroke, 0.5)
+      }
+    })
   }
 
   showSuccessEffect() {
@@ -298,6 +316,9 @@ export class PathJudge {
   }
 
   destroy() {
+    if (this.themeUnsubscribe) {
+      this.themeUnsubscribe()
+    }
     this.removeInputHandlers()
     if (this.pathGraphics) {
       this.pathGraphics.destroy()

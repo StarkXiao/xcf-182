@@ -1,5 +1,6 @@
 import { LEVELS } from '../data/levels.js'
 import { LevelGenerator } from './LevelGenerator.js'
+import { ThemeManager } from './ThemeManager.js'
 
 const DEFAULT_THEME = {
   gridBg: 0x0d1117,
@@ -24,7 +25,24 @@ export class LevelMap {
     this.offsetX = 0
     this.offsetY = 0
     this.dailyLevel = null
+    
+    this.themeManager = ThemeManager.getInstance()
     this.theme = { ...DEFAULT_THEME, ...(themeColors || {}) }
+    
+    this.renderedElements = {
+      bg: null,
+      cells: [],
+      obstacles: [],
+      startMarker: null,
+      startText: null,
+      endMarker: null,
+      endText: null,
+      obstacleParticles: []
+    }
+    
+    this.themeUnsubscribe = this.themeManager.onThemeChange((theme) => {
+      this.applyTheme(theme)
+    })
   }
 
   setDailyLevel(level) {
@@ -84,10 +102,28 @@ export class LevelMap {
   }
 
   render() {
+    this.updateThemeColors()
     this.renderBackground()
     this.renderGrid()
     this.renderObstacles()
     this.renderStartEnd()
+  }
+
+  updateThemeColors() {
+    const gridTheme = this.themeManager.getGridColors()
+    this.theme = {
+      gridBg: gridTheme.bg,
+      gridBgStroke: gridTheme.bgStroke,
+      gridCell: gridTheme.cell,
+      gridCellStroke: gridTheme.cellStroke,
+      obstacleFill: gridTheme.obstacleFill,
+      obstacleStroke: gridTheme.obstacleStroke,
+      obstacleSpark: gridTheme.obstacleSpark,
+      startFill: gridTheme.startFill,
+      startStroke: gridTheme.startStroke,
+      endFill: gridTheme.endFill,
+      endStroke: gridTheme.endStroke
+    }
   }
 
   renderBackground() {
@@ -113,10 +149,13 @@ export class LevelMap {
       repeat: -1,
       ease: 'Sine.easeInOut'
     })
+    
+    this.renderedElements.bg = bg
   }
 
   renderGrid() {
     const { rows, cols } = this.currentLevel.gridSize
+    this.renderedElements.cells = []
     
     for (let row = 0; row < rows; row++) {
       for (let col = 0; col < cols; col++) {
@@ -135,15 +174,19 @@ export class LevelMap {
         )
         cellBg.setStrokeStyle(1, this.theme.gridCellStroke, 0.5)
         cellBg.setData('cell', cell)
-        cellBg.setInteractive({ useHandCursor: true })
+        cellBg.setInteractive(new Phaser.Geom.Rectangle(-(this.cellSize - 4) / 2, -(this.cellSize - 4) / 2, this.cellSize - 4, this.cellSize - 4), Phaser.Geom.Rectangle.Contains)
+        if (cellBg.input) cellBg.input.cursor = 'pointer'
         
         cell.sprite = cellBg
+        this.renderedElements.cells.push(cellBg)
       }
     }
   }
 
   renderObstacles() {
     const { obstacles } = this.currentLevel
+    this.renderedElements.obstacles = []
+    this.renderedElements.obstacleParticles = []
     
     obstacles.forEach(obs => {
       const x = this.offsetX + obs.col * this.cellSize + this.cellSize / 2
@@ -177,6 +220,9 @@ export class LevelMap {
         callback: () => sparkles.start(),
         loop: false
       })
+      
+      this.renderedElements.obstacles.push(rock)
+      this.renderedElements.obstacleParticles.push(sparkles)
     })
   }
 
@@ -206,6 +252,9 @@ export class LevelMap {
       ease: 'Sine.easeInOut'
     })
     
+    this.renderedElements.startMarker = startMarker
+    this.renderedElements.startText = startText
+    
     const endX = this.offsetX + end.col * this.cellSize + this.cellSize / 2
     const endY = this.offsetY + end.row * this.cellSize + this.cellSize / 2
     
@@ -227,6 +276,86 @@ export class LevelMap {
       yoyo: true,
       repeat: -1,
       ease: 'Sine.easeInOut'
+    })
+    
+    this.renderedElements.endMarker = endMarker
+    this.renderedElements.endText = endText
+  }
+
+  applyTheme(theme) {
+    const gridTheme = theme.grid
+    this.theme = {
+      gridBg: gridTheme.bg,
+      gridBgStroke: gridTheme.bgStroke,
+      gridCell: gridTheme.cell,
+      gridCellStroke: gridTheme.cellStroke,
+      obstacleFill: gridTheme.obstacleFill,
+      obstacleStroke: gridTheme.obstacleStroke,
+      obstacleSpark: gridTheme.obstacleSpark,
+      startFill: gridTheme.startFill,
+      startStroke: gridTheme.startStroke,
+      endFill: gridTheme.endFill,
+      endStroke: gridTheme.endStroke
+    }
+    
+    if (this.renderedElements.bg) {
+      this.renderedElements.bg.setFillStyle(this.theme.gridBg, 0.8)
+      this.renderedElements.bg.setStrokeStyle(2, this.theme.gridBgStroke, 1)
+    }
+    
+    this.renderedElements.cells.forEach(cellBg => {
+      const cell = cellBg.getData('cell')
+      if (!cell.isOnPath) {
+        cellBg.setFillStyle(this.theme.gridCell, 0.6)
+      }
+      cellBg.setStrokeStyle(1, this.theme.gridCellStroke, 0.5)
+    })
+    
+    this.renderedElements.obstacles.forEach(rock => {
+      rock.setFillStyle(this.theme.obstacleFill, 0.9)
+      rock.setStrokeStyle(2, this.theme.obstacleStroke, 1)
+    })
+    
+    this.renderedElements.obstacleParticles.forEach(ps => {
+      ps.setTint(this.theme.obstacleSpark)
+    })
+    
+    if (this.renderedElements.startMarker) {
+      this.renderedElements.startMarker.setFillStyle(this.theme.startFill, 0.8)
+      this.renderedElements.startMarker.setStrokeStyle(3, this.theme.startStroke, 1)
+    }
+    
+    if (this.renderedElements.endMarker) {
+      this.renderedElements.endMarker.setFillStyle(this.theme.endFill, 0.8)
+      this.renderedElements.endMarker.setStrokeStyle(3, this.theme.endStroke, 1)
+    }
+    
+    this.playThemeTransitionEffect()
+  }
+
+  playThemeTransitionEffect() {
+    const { rows, cols } = this.currentLevel.gridSize
+    const centerX = this.offsetX + (cols * this.cellSize) / 2
+    const centerY = this.offsetY + (rows * this.cellSize) / 2
+    
+    const particles = this.scene.add.particles(centerX, centerY, 'sparkle', {
+      speed: { min: 100, max: 250 },
+      angle: { min: 0, max: 360 },
+      scale: { start: 0.6, end: 0 },
+      alpha: { start: 1, end: 0 },
+      lifespan: { min: 400, max: 800 },
+      tint: [this.theme.endFill, this.theme.startFill, this.theme.gridBgStroke],
+      quantity: 40,
+      duration: 600,
+      blendMode: 'ADD'
+    })
+    
+    this.scene.tweens.add({
+      targets: [this.renderedElements.startMarker, this.renderedElements.endMarker],
+      scale: { from: 1.5, to: 1 },
+      alpha: { from: 1, to: 0.8 },
+      duration: 500,
+      ease: 'Back.out'
     })
   }
 
@@ -279,5 +408,11 @@ export class LevelMap {
 
   getCurrentLevel() {
     return this.currentLevel
+  }
+
+  destroy() {
+    if (this.themeUnsubscribe) {
+      this.themeUnsubscribe()
+    }
   }
 }

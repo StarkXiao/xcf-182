@@ -1,4 +1,5 @@
 import { PLANT_TYPES } from '../data/levels.js'
+import { ThemeManager } from './ThemeManager.js'
 
 export class PlantState {
   constructor(scene, levelMap) {
@@ -7,6 +8,12 @@ export class PlantState {
     this.plants = []
     this.litPlants = new Set()
     this.breathingTweens = []
+    
+    this.themeManager = ThemeManager.getInstance()
+    
+    this.themeUnsubscribe = this.themeManager.onThemeChange((theme) => {
+      this.applyTheme(theme)
+    })
   }
 
   init() {
@@ -27,9 +34,19 @@ export class PlantState {
     }
   }
 
+  getPlantColors(type) {
+    const themeColors = this.themeManager.getPlantColors(type)
+    const baseType = PLANT_TYPES[type]
+    return {
+      ...baseType,
+      color: themeColors.color,
+      glowColor: themeColors.glowColor
+    }
+  }
+
   createPlant(cell) {
     const pos = this.levelMap.getWorldPosition(cell.row, cell.col)
-    const plantType = PLANT_TYPES[cell.plant.type]
+    const plantType = this.getPlantColors(cell.plant.type)
     const plant = this.createPlantSprite(pos.x, pos.y, cell.plant.type, plantType)
     
     plant.setData('cell', cell)
@@ -37,7 +54,9 @@ export class PlantState {
     plant.setData('plantType', plantType)
     plant.setData('isLit', false)
     
-    plant.setInteractive({ useHandCursor: true })
+    const plantSize = plantType.size * 2
+    plant.setInteractive(new Phaser.Geom.Rectangle(-plantSize / 2, -plantSize / 2, plantSize, plantSize), Phaser.Geom.Rectangle.Contains)
+    if (plant.input) plant.input.cursor = 'pointer'
     
     this.startBreathing(plant, plantType)
     
@@ -252,6 +271,56 @@ export class PlantState {
     return cell.isLit
   }
 
+  applyTheme(theme) {
+    this.plants.forEach(plant => {
+      const type = plant.getData('type')
+      const newColors = theme.plants[type]
+      if (!newColors) return
+      
+      const currentPlantType = plant.getData('plantType')
+      const newPlantType = {
+        ...currentPlantType,
+        color: newColors.color,
+        glowColor: newColors.glowColor
+      }
+      plant.setData('plantType', newPlantType)
+      
+      if (plant.glow) {
+        plant.glow.setFillStyle(newColors.glowColor, plant.glow.alpha)
+      }
+      
+      this.redrawPlantSprite(plant, type, newPlantType)
+    })
+  }
+
+  redrawPlantSprite(plant, type, plantType) {
+    if (!plant.plantSprite) return
+    
+    const oldSprite = plant.plantSprite
+    let newSprite
+    
+    switch (type) {
+      case 'moss':
+        newSprite = this.createMossSprite(plantType)
+        break
+      case 'mushroom':
+        newSprite = this.createMushroomSprite(plantType)
+        break
+      case 'flower':
+        newSprite = this.createFlowerSprite(plantType)
+        break
+      default:
+        newSprite = this.createMossSprite(plantType)
+    }
+    
+    const index = plant.getIndex(oldSprite)
+    if (index >= 0) {
+      plant.addAt(newSprite, index)
+      oldSprite.destroy()
+      plant.plantSprite = newSprite
+    }
+  }
+
   playLightSound() {
     if (!this.scene.sound) return
     
@@ -282,6 +351,9 @@ export class PlantState {
   }
 
   destroy() {
+    if (this.themeUnsubscribe) {
+      this.themeUnsubscribe()
+    }
     this.breathingTweens.forEach(tween => tween.stop())
     this.breathingTweens = []
     this.plants = []

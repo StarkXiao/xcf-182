@@ -72,8 +72,6 @@ export class GameScene extends Phaser.Scene {
       this.levelMap.setDailyLevel(this.dailyLevel)
     }
     
-    this.hintPanel.init()
-    
     this.hintPanel.onReset = () => this.resetLevel()
     this.hintPanel.onShowHint = () => {
       if (this.pathJudge) {

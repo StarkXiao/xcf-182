@@ -1,3 +1,5 @@
+import { ThemeManager } from './ThemeManager.js'
+
 const DEFAULT_EFFECTS_THEME = {
   bgTints: [0x60a5fa, 0xa78bfa, 0xf472b6, 0x4ade80],
   ambientGlow: 0x1e3a5f
@@ -8,12 +10,34 @@ export class Effects {
     this.scene = scene
     this.particleSystems = []
     this.backgroundParticles = null
-    this.theme = { ...DEFAULT_EFFECTS_THEME }
+    this.ambientGlow = null
+    this.vignette = null
+    this.creatures = []
+    
+    this.themeManager = ThemeManager.getInstance()
+    
+    const particleTheme = this.themeManager.getParticleColors()
+    this.theme = {
+      ...DEFAULT_EFFECTS_THEME,
+      bgTints: particleTheme.bgTints,
+      ambientGlow: particleTheme.ambientGlow
+    }
+    
+    this.themeUnsubscribe = this.themeManager.onThemeChange((theme) => {
+      this.applyTheme(theme)
+    })
   }
 
   init(themeColors = null) {
     if (themeColors) {
       this.theme = { ...DEFAULT_EFFECTS_THEME, ...themeColors }
+    } else {
+      const particleTheme = this.themeManager.getParticleColors()
+      this.theme = {
+        ...DEFAULT_EFFECTS_THEME,
+        bgTints: particleTheme.bgTints,
+        ambientGlow: particleTheme.ambientGlow
+      }
     }
     this.createSparkleTexture()
     this.createBackgroundParticles()
@@ -69,6 +93,7 @@ export class Effects {
     glow.fillGradientStyle(this.theme.ambientGlow, this.theme.ambientGlow, 0x0f172a, 0x0f172a, 0.3)
     glow.fillRect(0, 0, width, height)
     glow.setDepth(-200)
+    this.ambientGlow = glow
     
     const vignette = this.scene.add.graphics()
     const radius = Math.min(width, height) * 0.6
@@ -86,6 +111,7 @@ export class Effects {
     mask.invertAlpha = true
     vignette.setMask(mask)
     vignette.setDepth(-150)
+    this.vignette = vignette
   }
 
   createSuccessEffect(x, y, color = 0x22c55e) {
@@ -133,10 +159,11 @@ export class Effects {
   }
 
   createCreatureSprite(x, y) {
+    const creatureColors = this.themeManager.getCreatureColors()
     const creature = this.scene.add.container(x, y)
     
-    const body = this.scene.add.ellipse(0, 0, 25, 20, 0xf97316, 0.9)
-    body.setStrokeStyle(2, 0xea580c, 1)
+    const body = this.scene.add.ellipse(0, 0, 25, 20, creatureColors.body, 0.9)
+    body.setStrokeStyle(2, creatureColors.bodyStroke, 1)
     creature.add(body)
     
     const eye1 = this.scene.add.circle(-6, -3, 5, 0xffffff, 1)
@@ -147,17 +174,20 @@ export class Effects {
     const pupil2 = this.scene.add.circle(7, -3, 2, 0x1e293b, 1)
     creature.add(pupil1, pupil2)
     
-    const antenna1 = this.scene.add.line(-10, -10, 0, 0, -8, -12, 0xf97316, 1)
-    const antenna2 = this.scene.add.line(10, -10, 0, 0, 8, -12, 0xf97316, 1)
+    const antenna1 = this.scene.add.line(-10, -10, 0, 0, -8, -12, creatureColors.body, 1)
+    const antenna2 = this.scene.add.line(10, -10, 0, 0, 8, -12, creatureColors.body, 1)
     antenna1.setLineWidth(2)
     antenna2.setLineWidth(2)
     creature.add(antenna1, antenna2)
     
-    const glow = this.scene.add.circle(0, 0, 35, 0xfbbf24, 0.1)
+    const glow = this.scene.add.circle(0, 0, 35, creatureColors.glow, 0.1)
     creature.addAt(glow, 0)
     
     creature.glow = glow
     creature.body = body
+    creature.antenna1 = antenna1
+    creature.antenna2 = antenna2
+    creature.colors = creatureColors
     
     this.scene.tweens.add({
       targets: creature,
@@ -177,6 +207,8 @@ export class Effects {
       repeat: -1,
       ease: 'Sine.easeInOut'
     })
+    
+    this.creatures.push(creature)
     
     return creature
   }
@@ -222,13 +254,14 @@ export class Effects {
   }
 
   createTrailEffect(x, y) {
+    const creatureColors = this.themeManager.getCreatureColors()
     const trail = this.scene.add.particles(x, y, 'sparkle', {
       speed: { min: 10, max: 30 },
       angle: { min: 0, max: 360 },
       scale: { start: 0.3, end: 0 },
       alpha: { start: 0.8, end: 0 },
       lifespan: 500,
-      tint: 0xfbbf24,
+      tint: creatureColors.glow,
       quantity: 5,
       duration: 100
     })
@@ -288,14 +321,88 @@ export class Effects {
     return textObj
   }
 
+  applyTheme(theme) {
+    const particleTheme = theme.particles
+    const creatureTheme = theme.creature
+    
+    this.theme = {
+      ...this.theme,
+      bgTints: particleTheme.bgTints,
+      ambientGlow: particleTheme.ambientGlow
+    }
+    
+    if (this.backgroundParticles) {
+      this.backgroundParticles.setTint(particleTheme.bgTints)
+    }
+    
+    if (this.ambientGlow) {
+      const width = this.scene.game.config.width
+      const height = this.scene.game.config.height
+      this.ambientGlow.clear()
+      this.ambientGlow.fillGradientStyle(
+        particleTheme.ambientGlow, particleTheme.ambientGlow, 
+        0x0f172a, 0x0f172a, 0.3
+      )
+      this.ambientGlow.fillRect(0, 0, width, height)
+    }
+    
+    this.creatures.forEach(creature => {
+      if (creature.body) {
+        creature.body.setFillStyle(creatureTheme.body, 0.9)
+        creature.body.setStrokeStyle(2, creatureTheme.bodyStroke, 1)
+      }
+      if (creature.glow) {
+        creature.glow.setFillStyle(creatureTheme.glow, creature.glow.alpha)
+      }
+      if (creature.antenna1) {
+        creature.antenna1.setStrokeStyle(2, creatureTheme.body, 1)
+      }
+      if (creature.antenna2) {
+        creature.antenna2.setStrokeStyle(2, creatureTheme.body, 1)
+      }
+      creature.colors = creatureTheme
+    })
+    
+    this.playThemeSwitchEffect()
+  }
+
+  playThemeSwitchEffect() {
+    const width = this.scene.game.config.width
+    const height = this.scene.game.config.height
+    
+    for (let i = 0; i < 15; i++) {
+      this.scene.time.delayedCall(i * 40, () => {
+        const x = Math.random() * width
+        const y = Math.random() * height
+        const color = this.theme.bgTints[Math.floor(Math.random() * this.theme.bgTints.length)]
+        
+        this.scene.add.particles(x, y, 'sparkle', {
+          speed: { min: 60, max: 180 },
+          angle: { min: 0, max: 360 },
+          scale: { start: 0.5, end: 0 },
+          alpha: { start: 1, end: 0 },
+          lifespan: { min: 500, max: 1000 },
+          tint: color,
+          quantity: 8,
+          duration: 300,
+          blendMode: 'ADD'
+        })
+      })
+    }
+  }
+
   setLevelMap(levelMap) {
     this.levelMap = levelMap
   }
 
   destroy() {
+    if (this.themeUnsubscribe) {
+      this.themeUnsubscribe()
+    }
     this.particleSystems.forEach(ps => {
       if (ps && ps.destroy) ps.destroy()
     })
     this.particleSystems = []
+    this.creatures = []
   }
 }
