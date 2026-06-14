@@ -8,6 +8,10 @@
       <div class="header-actions">
         <button class="action-btn" @click="importLevel">📂 导入</button>
         <button class="action-btn primary" @click="exportLevel">💾 导出</button>
+        <button class="action-btn workshop" @click="uploadToWorkshop" :disabled="isUploading">
+          <span v-if="isUploading">⏳ 上传中...</span>
+          <span v-else>☁️ 上传到工坊</span>
+        </button>
         <button class="action-btn success" @click="togglePreview">
           {{ isPreview ? '🛠 编辑' : '▶️ 预览试玩' }}
         </button>
@@ -267,8 +271,12 @@
 import { ref, reactive, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { LEVELS, PLANT_TYPES } from '../game/data/levels.js'
 import { Game } from '../game/Game.js'
+import { getWorkshopService } from '../game/modules/WorkshopService.js'
 
-const emit = defineEmits(['back'])
+const emit = defineEmits(['back', 'uploadSuccess'])
+
+const workshopService = getWorkshopService()
+const isUploading = ref(false)
 
 const rows = ref(5)
 const cols = ref(5)
@@ -693,6 +701,41 @@ function exportLevel() {
   URL.revokeObjectURL(url)
 }
 
+async function uploadToWorkshop() {
+  if (!validateForPreview()) return
+  
+  if (!levelData.name || levelData.name.trim() === '') {
+    alert('请先填写关卡名称！')
+    return
+  }
+  
+  if (!isValidPath.value) {
+    alert('路径不连通或存在障碍物，请检查！')
+    return
+  }
+  
+  if (isUploading.value) return
+  
+  isUploading.value = true
+  
+  try {
+    const uploadData = JSON.parse(JSON.stringify(levelData))
+    uploadData.gridSize = { rows: rows.value, cols: cols.value }
+    
+    const result = await workshopService.uploadWorkshopLevel(uploadData)
+    
+    if (result.success) {
+      alert(`🎉 上传成功！\n\n关卡已发布到创意工坊，其他人可以浏览和试玩你的关卡了！\n\n关卡ID：${result.levelId}`)
+      emit('uploadSuccess')
+    }
+  } catch (e) {
+    console.error('Upload failed:', e)
+    alert('上传失败：' + (e.message || '未知错误'))
+  } finally {
+    isUploading.value = false
+  }
+}
+
 function importLevel() {
   fileInput.value.click()
 }
@@ -841,6 +884,21 @@ onUnmounted(() => {
 
 .action-btn.danger:hover {
   box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);
+}
+
+.action-btn.workshop {
+  background: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%);
+  border-color: transparent;
+  color: white;
+}
+
+.action-btn.workshop:hover:not(:disabled) {
+  box-shadow: 0 4px 15px rgba(139, 92, 246, 0.4);
+}
+
+.action-btn.workshop:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .editor-body {

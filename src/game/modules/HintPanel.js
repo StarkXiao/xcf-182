@@ -18,7 +18,9 @@ export class HintPanel {
     this.isDailyChallengeMode = false
     this.isStoryMode = false
     this.isRandomMode = false
+    this.isWorkshopMode = false
     this.currentRandomLevel = null
+    this.currentWorkshopLevel = null
     this.randomButtons = []
     this.themePanel = null
     this.themeButtons = []
@@ -44,6 +46,17 @@ export class HintPanel {
     if (enabled) {
       this.isDailyChallengeMode = false
       this.isStoryMode = false
+      this.isWorkshopMode = false
+    }
+  }
+
+  setWorkshopMode(enabled, level = null) {
+    this.isWorkshopMode = enabled
+    this.currentWorkshopLevel = level
+    if (enabled) {
+      this.isDailyChallengeMode = false
+      this.isStoryMode = false
+      this.isRandomMode = false
     }
   }
 
@@ -732,7 +745,7 @@ export class HintPanel {
     }
   }
 
-  showLevelComplete(levelIndex, score, onNext, isStoryMode = false, isRandomMode = false, completionTime = null) {
+  showLevelComplete(levelIndex, score, onNext, isStoryMode = false, isRandomMode = false, completionTime = null, isWorkshopMode = false) {
     const width = this.scene.game.config.width
     const height = this.scene.game.config.height
     
@@ -749,6 +762,7 @@ export class HintPanel {
     let strokeColor = 0x22c55e
     if (isStoryMode) strokeColor = 0xa78bfa
     if (isRandomMode) strokeColor = 0xec4899
+    if (isWorkshopMode) strokeColor = 0x8b5cf6
     bg.setStrokeStyle(3, strokeColor, 0.8)
     panel.add(bg)
     
@@ -761,6 +775,10 @@ export class HintPanel {
     if (isRandomMode) {
       titleText = '🎲 随机挑战完成！'
       titleFill = '#ec4899'
+    }
+    if (isWorkshopMode) {
+      titleText = '🎨 工坊关卡完成！'
+      titleFill = '#8b5cf6'
     }
     const title = this.scene.add.text(width / 2, height / 2 - panelHeight / 2 + 40, titleText, {
       fontSize: '24px',
@@ -780,6 +798,10 @@ export class HintPanel {
       const diffNames = ['', '入门', '简单', '普通', '困难', '专家']
       levelLabel = `${diffNames[this.currentRandomLevel.difficulty] || '随机'} 模式`
       levelFill = '#ec4899'
+    }
+    if (isWorkshopMode && this.currentWorkshopLevel) {
+      levelLabel = this.currentWorkshopLevel.name || '创意工坊'
+      levelFill = '#8b5cf6'
     }
     const levelName = this.scene.add.text(width / 2, height / 2 - panelHeight / 2 + 80, levelLabel, {
       fontSize: '18px',
@@ -825,7 +847,7 @@ export class HintPanel {
       btnFill = '#a78bfa'
       btnBg = '#4c1d95'
       btnBgHover = '#6d28d9'
-    } else if (!isStoryMode && !isRandomMode && levelIndex >= LEVELS.length - 1) {
+    } else if (!isStoryMode && !isRandomMode && !isWorkshopMode && levelIndex >= LEVELS.length - 1) {
       nextBtnLabel = '再玩一次'
     }
     
@@ -834,6 +856,13 @@ export class HintPanel {
       btnFill = '#ec4899'
       btnBg = '#831843'
       btnBgHover = '#9d174d'
+    }
+    
+    if (isWorkshopMode) {
+      nextBtnLabel = '🏠 返回工坊'
+      btnFill = '#8b5cf6'
+      btnBg = '#4c1d95'
+      btnBgHover = '#6d28d9'
     }
     
     const btnY = completionTime !== null ? height / 2 + 100 : height / 2 + 80

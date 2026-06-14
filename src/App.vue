@@ -1,6 +1,10 @@
 <template>
   <div class="app-root">
-    <LevelEditor v-if="mode === 'editor'" @back="mode = 'start'" />
+    <LevelEditor 
+      v-if="mode === 'editor'" 
+      @back="mode = 'start'" 
+      @uploadSuccess="onLevelUploadSuccess"
+    />
     <DailyChallenge
       v-else-if="mode === 'daily'"
       @back="mode = 'start'"
@@ -9,6 +13,14 @@
     <Leaderboard
       v-else-if="mode === 'leaderboard'"
       @back="mode = 'start'"
+    />
+    <Workshop
+      v-else-if="mode === 'workshop'"
+      @back="mode = 'start'"
+      @playLevel="startWorkshopLevel"
+      @openEditor="openEditorFromWorkshop"
+      :refresh-trigger="workshopRefreshTrigger"
+      :upload-success="uploadSuccessFlag"
     />
     <div v-else class="game-container">
       <div ref="gameContainer" id="phaser-game"></div>
@@ -82,6 +94,9 @@
               <button @click="openLeaderboard" class="leaderboard-btn">
                 🏆 排行榜
               </button>
+              <button @click="openWorkshop" class="workshop-btn">
+                🎨 创意工坊
+              </button>
             </div>
           </div>
         </div>
@@ -96,14 +111,21 @@ import { Game } from './game/Game.js'
 import LevelEditor from './components/LevelEditor.vue'
 import DailyChallenge from './components/DailyChallenge.vue'
 import Leaderboard from './components/Leaderboard.vue'
+import Workshop from './components/Workshop.vue'
 import { generateDailyLevel, isTodayCompleted, markTodayCompleted } from './game/data/dailyChallenge.js'
+import { getWorkshopService } from './game/modules/WorkshopService.js'
 
 const mode = ref('start')
 const gameContainer = ref(null)
 const showStartScreen = ref(true)
 const randomDifficulty = ref(3)
+const workshopRefreshTrigger = ref(0)
+const uploadSuccessFlag = ref(false)
 let gameInstance = null
 let dailyChallengeLevel = null
+let currentWorkshopLevel = null
+
+const workshopService = getWorkshopService()
 
 const startGame = () => {
   showStartScreen.value = false
@@ -224,6 +246,49 @@ const openEditor = () => {
 
 const openLeaderboard = () => {
   mode.value = 'leaderboard'
+}
+
+const openWorkshop = () => {
+  mode.value = 'workshop'
+}
+
+const openEditorFromWorkshop = () => {
+  mode.value = 'editor'
+}
+
+async function startWorkshopLevel(workshopLevel) {
+  if (!workshopLevel) return
+  
+  currentWorkshopLevel = workshopLevel
+  
+  await workshopService.incrementPlayCount(workshopLevel.id)
+  
+  const gameLevel = workshopService.convertToGameLevel(workshopLevel)
+  
+  showStartScreen.value = false
+  mode.value = 'game'
+  
+  setTimeout(() => {
+    if (gameContainer.value) {
+      gameInstance = new Game(gameContainer.value, {
+        isDailyChallenge: false,
+        isStoryMode: false,
+        isWorkshopMode: true,
+        workshopLevel: gameLevel,
+        onBackToStart: () => {
+          backToStart()
+        }
+      })
+    }
+  }, 100)
+}
+
+function onLevelUploadSuccess() {
+  uploadSuccessFlag.value = true
+  setTimeout(() => {
+    uploadSuccessFlag.value = false
+  }, 100)
+  workshopRefreshTrigger.value++
 }
 
 onMounted(() => {
@@ -513,6 +578,39 @@ onUnmounted(() => {
   }
   to {
     box-shadow: 0 4px 25px rgba(251, 191, 36, 0.7), 0 0 40px rgba(251, 191, 36, 0.2);
+  }
+}
+
+.workshop-btn {
+  background: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%);
+  color: white;
+  border: none;
+  padding: 12px 40px;
+  font-size: 1rem;
+  font-weight: bold;
+  border-radius: 50px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(139, 92, 246, 0.4);
+  min-width: 240px;
+  animation: workshopGlow 2s ease-in-out infinite alternate;
+}
+
+.workshop-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 25px rgba(139, 92, 246, 0.6);
+}
+
+.workshop-btn:active {
+  transform: translateY(0);
+}
+
+@keyframes workshopGlow {
+  from {
+    box-shadow: 0 4px 15px rgba(139, 92, 246, 0.4);
+  }
+  to {
+    box-shadow: 0 4px 25px rgba(139, 92, 246, 0.7), 0 0 40px rgba(236, 72, 153, 0.2);
   }
 }
 

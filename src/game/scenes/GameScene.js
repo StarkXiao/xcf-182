@@ -59,6 +59,12 @@ export class GameScene extends Phaser.Scene {
     this.onBackToStart = config.onBackToStart || null
   }
 
+  setWorkshopConfig(config) {
+    this.isWorkshopMode = config.isWorkshopMode || false
+    this.workshopLevel = config.workshopLevel || null
+    this.onBackToStart = config.onBackToStart || null
+  }
+
   setThemeColors(colors) {
     this.themeColors = colors
   }
@@ -83,6 +89,10 @@ export class GameScene extends Phaser.Scene {
       this.levelMap.setDailyLevel(this.dailyLevel)
     }
     
+    if (this.isWorkshopMode && this.workshopLevel) {
+      this.levelMap.setWorkshopLevel(this.workshopLevel)
+    }
+    
     this.hintPanel.onReset = () => this.resetLevel()
     this.hintPanel.onShowHint = () => {
       if (this.pathJudge) {
@@ -100,6 +110,8 @@ export class GameScene extends Phaser.Scene {
     
     if (this.isRandomMode) {
       this.loadRandomLevel(this.randomDifficulty, this.randomSeed)
+    } else if (this.isWorkshopMode) {
+      this.loadWorkshopLevel()
     } else {
       this.loadLevel(this.currentLevelIndex)
     }
@@ -121,6 +133,32 @@ export class GameScene extends Phaser.Scene {
       
       const level = this.levelMap.loadRandomLevel(difficulty, seed)
       this._setupLevelAfterLoad(level)
+    })
+  }
+
+  loadWorkshopLevel() {
+    this.isAnimating = true
+    this.isWorkshopMode = true
+    
+    if (this.creature) {
+      this.creature.destroy()
+      this.creature = null
+    }
+    
+    this.effects.createLevelTransition(() => {
+      this.children.removeAll()
+      
+      this.effects.init()
+      
+      const level = this.levelMap.loadWorkshopLevel()
+      if (!level) {
+        if (this.onBackToStart) {
+          this.onBackToStart()
+        }
+        return
+      }
+      
+      this._setupLevelAfterLoad(level, -1)
     })
   }
 
@@ -168,6 +206,10 @@ export class GameScene extends Phaser.Scene {
     
     if (this.isRandomMode) {
       this.hintPanel.setRandomMode(true, level)
+    }
+    
+    if (this.isWorkshopMode) {
+      this.hintPanel.setWorkshopMode(true, level)
     }
     
     this.hintPanel.onReset = () => this.resetLevel()
@@ -365,6 +407,20 @@ export class GameScene extends Phaser.Scene {
             true,
             completionTime
           )
+        } else if (this.isWorkshopMode) {
+          this.hintPanel.showLevelComplete(
+            -1,
+            levelScore,
+            () => {
+              if (this.onBackToStart) {
+                this.onBackToStart()
+              }
+            },
+            false,
+            false,
+            completionTime,
+            true
+          )
         } else {
           this.hintPanel.showLevelComplete(
             this.currentLevelIndex,
@@ -391,6 +447,8 @@ export class GameScene extends Phaser.Scene {
       const seed = this.levelMap.currentLevel.seed || 'random'
       const diff = this.levelMap.currentLevel.difficulty || 3
       levelId = `random_${diff}_${seed}`
+    } else if (this.isWorkshopMode && this.levelMap.currentLevel) {
+      levelId = `workshop_${this.levelMap.currentLevel.workshopId || this.levelMap.currentLevel.id}`
     } else if (this.currentLevelIndex >= 0 && this.currentLevelIndex < LEVELS.length) {
       levelId = LEVELS[this.currentLevelIndex].id
     }

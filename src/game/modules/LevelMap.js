@@ -49,6 +49,19 @@ export class LevelMap {
     this.dailyLevel = level
   }
 
+  setWorkshopLevel(level) {
+    this.workshopLevel = level
+  }
+
+  loadWorkshopLevel() {
+    if (!this.workshopLevel) {
+      return null
+    }
+    this.currentLevel = JSON.parse(JSON.stringify(this.workshopLevel))
+    this.createGrid()
+    return this.currentLevel
+  }
+
   loadLevel(levelIndex) {
     if (this.dailyLevel) {
       this.currentLevel = JSON.parse(JSON.stringify(this.dailyLevel))

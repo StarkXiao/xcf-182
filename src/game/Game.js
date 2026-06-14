@@ -46,6 +46,12 @@ export class Game {
           seed: this.options.seed || null,
           onBackToStart: this.options.onBackToStart
         })
+      } else if (this.options.isWorkshopMode) {
+        gameScene.setWorkshopConfig({
+          isWorkshopMode: true,
+          workshopLevel: this.options.workshopLevel,
+          onBackToStart: this.options.onBackToStart
+        })
       }
       
       if (this.options.isStoryMode) {
