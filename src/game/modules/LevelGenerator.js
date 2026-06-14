@@ -161,6 +161,25 @@ export class LevelGenerator {
     level.description = this._generateDescription(level)
     level.hint = this._generateHint(level)
 
+    const validation = LevelGenerator.validateLevel(level, true)
+    if (!validation.valid) {
+      return this.generate()
+    }
+
+    const finalPathSet = new Set(level.correctPath.map(p => `${p.row},${p.col}`))
+    const finalHasAlt = this._hasAlternativePath(
+      level.start,
+      level.end,
+      level.gridSize.rows,
+      level.gridSize.cols,
+      level.obstacles,
+      finalPathSet
+    )
+    
+    if (finalHasAlt) {
+      return this.generate()
+    }
+
     return level
   }
 
@@ -223,12 +242,16 @@ export class LevelGenerator {
       let path = this._randomWalkPath(start, end, rows, cols, maxPathLen, twistiness)
       
       if (!path || path.length < minPathLen * 0.5) continue
+      if (!this._isPathSimple(path)) continue
 
       if (path.length < maxPathLen) {
-        path = this._expandPath(path, rows, cols, maxPathLen, twistiness)
+        const expanded = this._expandPath(path, rows, cols, maxPathLen, twistiness)
+        if (this._isPathSimple(expanded)) {
+          path = expanded
+        }
       }
 
-      if (path.length >= minPathLen) {
+      if (path.length >= minPathLen && this._isPathSimple(path)) {
         const score = this._scorePath(path, start, end, minPathLen, maxPathLen)
         if (score > bestScore) {
           bestScore = score
@@ -318,6 +341,23 @@ export class LevelGenerator {
       if (dr1 === dr2 && dc1 === dc2) straights++
     }
     return straights
+  }
+
+  _isPathSimple(path) {
+    const pathSet = new Set(path.map(p => `${p.row},${p.col}`))
+    if (pathSet.size !== path.length) return false
+
+    for (let i = 0; i < path.length; i++) {
+      for (let j = i + 2; j < path.length; j++) {
+        if (j === i + 1) continue
+        const dr = Math.abs(path[i].row - path[j].row)
+        const dc = Math.abs(path[i].col - path[j].col)
+        if (dr + dc === 1) {
+          return false
+        }
+      }
+    }
+    return true
   }
 
   _expandPath(path, rows, cols, targetLen, twistiness) {
@@ -634,44 +674,123 @@ export class LevelGenerator {
     const obsSet = new Set(obstacles.map(o => `${o.row},${o.col}`))
     const startKey = `${start.row},${start.col}`
     const endKey = `${end.row},${end.col}`
-
-    const visited = new Set()
-    const queue = [{ row: start.row, col: start.col, hasLeftPath: false }]
-    visited.add(`${startKey}|false`)
-
+    
+    if (obsSet.has(startKey) || obsSet.has(endKey)) {
+      return false
+    }
+    
+    let pathCount = 0
+    const maxPaths = 2
+    const maxSearch = 200000
+    let searched = 0
+    
+    const correctPathLen = pathSet.size
+    const totalCells = rows * cols
+    const maxPathLen = Math.min(totalCells, correctPathLen * 10)
+    
     const dirs = [
       { dr: -1, dc: 0 },
       { dr: 1, dc: 0 },
       { dr: 0, dc: -1 },
       { dr: 0, dc: 1 }
     ]
+    
+    const stack = [{
+      row: start.row,
+      col: start.col,
+      visited: new Set([startKey]),
+      len: 1
+    }]
+    
+    while (stack.length > 0 && pathCount < maxPaths && searched < maxSearch) {
+      searched++
+      const current = stack.pop()
+      const currentKey = `${current.row},${current.col}`
+      
+      if (currentKey === endKey) {
+        pathCount++
+        if (pathCount >= maxPaths) {
+          return true
+        }
+        continue
+      }
+      
+      if (current.len >= maxPathLen) {
+        continue
+      }
+      
+      const remainingMin = Math.abs(current.row - end.row) + Math.abs(current.col - end.col)
+      if (current.len + remainingMin > maxPathLen) {
+        continue
+      }
+      
+      for (let i = dirs.length - 1; i >= 0; i--) {
+        const d = dirs[i]
+        const nr = current.row + d.dr
+        const nc = current.col + d.dc
+        const nKey = `${nr},${nc}`
+        
+        if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue
+        if (obsSet.has(nKey)) continue
+        if (current.visited.has(nKey)) continue
+        
+        const nextRemaining = Math.abs(nr - end.row) + Math.abs(nc - end.col)
+        if (current.len + 1 + nextRemaining > maxPathLen) continue
+        
+        const newVisited = new Set(current.visited)
+        newVisited.add(nKey)
+        stack.push({
+          row: nr,
+          col: nc,
+          visited: newVisited,
+          len: current.len + 1
+        })
+      }
+    }
+    
+    return pathCount > 1
+  }
 
+  _bfsHasPath(start, end, rows, cols, obsSet) {
+    const startKey = `${start.row},${start.col}`
+    const endKey = `${end.row},${end.col}`
+    
+    if (obsSet.has(startKey) || obsSet.has(endKey)) {
+      return false
+    }
+    
+    const visited = new Set([startKey])
+    const queue = [{ row: start.row, col: start.col }]
+    
+    const dirs = [
+      { dr: -1, dc: 0 },
+      { dr: 1, dc: 0 },
+      { dr: 0, dc: -1 },
+      { dr: 0, dc: 1 }
+    ]
+    
     while (queue.length > 0) {
       const current = queue.shift()
       const currentKey = `${current.row},${current.col}`
-
-      if (currentKey === endKey && current.hasLeftPath) {
+      
+      if (currentKey === endKey) {
         return true
       }
-
+      
       for (const d of dirs) {
         const nr = current.row + d.dr
         const nc = current.col + d.dc
         const nKey = `${nr},${nc}`
-
+        
         if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue
         if (obsSet.has(nKey)) continue
-
-        const nextHasLeft = current.hasLeftPath || !pathSet.has(nKey)
-        const stateKey = `${nKey}|${nextHasLeft}`
-
-        if (visited.has(stateKey)) continue
-
-        visited.add(stateKey)
-        queue.push({ row: nr, col: nc, hasLeftPath: nextHasLeft })
+        if (visited.has(nKey)) continue
+        
+        visited.add(nKey)
+        queue.push({ row: nr, col: nc })
       }
     }
-
+    
     return false
   }
 
