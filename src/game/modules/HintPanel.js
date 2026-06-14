@@ -31,6 +31,10 @@ export class HintPanel {
     this.redoBtn = null
     this.stepsText = null
     this.steps = 0
+    this.comboText = null
+    this.maxComboText = null
+    this.currentCombo = 0
+    this.maxCombo = 0
     
     this.themeManager = ThemeManager.getInstance()
     this.themeManager.loadThemeFromStorage()
@@ -70,6 +74,8 @@ export class HintPanel {
     this.attempts = 0
     this.currentTime = 0
     this.steps = 0
+    this.currentCombo = 0
+    this.maxCombo = 0
     if (!preserveScore) {
       this.score = 0
     }
@@ -81,6 +87,7 @@ export class HintPanel {
     this.updateScoreDisplay()
     this.updateTimer(0)
     this.updateSteps(0)
+    this.updateCombo(0, 0)
   }
 
   updateScoreDisplay() {
@@ -141,6 +148,22 @@ export class HintPanel {
     })
     this.stepsText.setOrigin(0.5, 0.5)
     this.stepsText.setDepth(101)
+    
+    this.comboText = this.scene.add.text(20, 50, '🔥 连击: 0', {
+      fontSize: '14px',
+      fill: '#9ca3af',
+      fontStyle: 'bold'
+    })
+    this.comboText.setOrigin(0, 0.5)
+    this.comboText.setDepth(101)
+    
+    this.maxComboText = this.scene.add.text(20, 25, '最高: 0', {
+      fontSize: '12px',
+      fill: '#64748b',
+      fontStyle: 'bold'
+    })
+    this.maxComboText.setOrigin(0, 0.5)
+    this.maxComboText.setDepth(101)
     
     const currentTheme = this.themeManager.getCurrentTheme()
     const btnX = width - 40
@@ -720,6 +743,29 @@ export class HintPanel {
     }
   }
 
+  updateCombo(combo, maxCombo) {
+    this.currentCombo = combo
+    this.maxCombo = maxCombo
+    if (this.comboText) {
+      if (combo > 1) {
+        this.comboText.setText(`🔥 ${combo} 连击!`)
+        this.comboText.setColor('#f97316')
+        this.scene.tweens.add({
+          targets: this.comboText,
+          scale: { from: 1.3, to: 1 },
+          duration: 200,
+          ease: 'Back.out'
+        })
+      } else {
+        this.comboText.setText('🔥 连击: 0')
+        this.comboText.setColor('#9ca3af')
+      }
+    }
+    if (this.maxComboText) {
+      this.maxComboText.setText(`最高: ${maxCombo}`)
+    }
+  }
+
   formatTime(seconds) {
     if (this.leaderboardService) {
       return this.leaderboardService.formatTime(seconds)
@@ -822,14 +868,14 @@ export class HintPanel {
     }
   }
 
-  showLevelComplete(levelIndex, score, onNext, isStoryMode = false, isRandomMode = false, completionTime = null, isWorkshopMode = false, stars = 1, steps = 0, canNext = true) {
+  showLevelComplete(levelIndex, score, onNext, isStoryMode = false, isRandomMode = false, completionTime = null, isWorkshopMode = false, stars = 1, steps = 0, canNext = true, maxCombo = 0) {
     const width = this.scene.game.config.width
     const height = this.scene.game.config.height
     
     const panel = this.scene.add.container(0, 0)
     panel.setDepth(300)
     
-    const panelHeight = 360
+    const panelHeight = 380
     
     const bg = this.scene.add.rectangle(
       width / 2, height / 2,
@@ -942,6 +988,13 @@ export class HintPanel {
       label: '尝试',
       value: `${this.attempts} 次`,
       color: '#60a5fa'
+    })
+    
+    stats.push({
+      icon: '🔥',
+      label: '最高连击',
+      value: `${maxCombo} 连`,
+      color: '#f97316'
     })
     
     const statsStartX = width / 2 - ((stats.length - 1) * statsSpacing) / 2
@@ -1184,11 +1237,20 @@ export class HintPanel {
   reset() {
     this.attempts = 0
     this.steps = 0
+    this.currentCombo = 0
+    this.maxCombo = 0
     if (this.attemptsText) {
       this.attemptsText.setText('尝试: 0 次')
     }
     if (this.stepsText) {
       this.stepsText.setText('👣 步数: 0')
+    }
+    if (this.comboText) {
+      this.comboText.setText('🔥 连击: 0')
+      this.comboText.setColor('#9ca3af')
+    }
+    if (this.maxComboText) {
+      this.maxComboText.setText('最高: 0')
     }
   }
 

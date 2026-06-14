@@ -72,19 +72,25 @@ export class PathJudge {
       }
     }
 
+    if (this.scene.resetCombo) {
+      this.scene.resetCombo()
+    }
+    this.scene.maxCombo = 0
+    this.scene.comboScore = 0
+
     snapshot.path.forEach(pos => {
       const cell = this.levelMap.getCellAt(pos.row, pos.col)
       if (cell) {
         cell.isOnPath = true
         this.selectedPath.push(cell)
         this.highlightCell(cell, 0x3b82f6)
-      }
-    })
-
-    snapshot.litPlants.forEach(pos => {
-      const cell = this.levelMap.getCellAt(pos.row, pos.col)
-      if (cell && cell.plantSprite) {
-        this.plantState.lightUp(cell.plantSprite)
+        
+        if (cell.plant && cell.plantSprite) {
+          const lit = this.plantState.lightUp(cell.plantSprite)
+          if (lit && this.scene.updatePlantCombo) {
+            this.scene.updatePlantCombo(cell.plant.type)
+          }
+        }
       }
     })
 
@@ -206,6 +212,9 @@ export class PathJudge {
         }
         this.updatePathDisplay()
         this.unhighlightCell(removedCell)
+        if (this.scene.resetCombo) {
+          this.scene.resetCombo()
+        }
         return
       }
     }
@@ -220,7 +229,10 @@ export class PathJudge {
       this.highlightCell(cell, 0x3b82f6)
       
       if (cell.plant && cell.plantSprite) {
-        this.plantState.lightUp(cell.plantSprite)
+        const lit = this.plantState.lightUp(cell.plantSprite)
+        if (lit && this.scene.updatePlantCombo) {
+          this.scene.updatePlantCombo(cell.plant.type)
+        }
       }
     }
   }
@@ -417,6 +429,10 @@ export class PathJudge {
     }
     
     this.plantState.resetAll()
+    
+    if (this.scene.resetCombo) {
+      this.scene.resetCombo()
+    }
     
     if (this.onHistoryChange) {
       this.onHistoryChange(this.canUndo(), this.canRedo())

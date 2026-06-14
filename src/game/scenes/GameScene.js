@@ -43,6 +43,10 @@ export class GameScene extends Phaser.Scene {
     this.isBossLevel = false
     this.levelProgressManager = null
     this.currentLevelSteps = 0
+    this.currentCombo = 0
+    this.maxCombo = 0
+    this.lastPlantType = null
+    this.comboScore = 0
   }
 
   setDailyChallengeConfig(config) {
@@ -299,6 +303,13 @@ export class GameScene extends Phaser.Scene {
     this.pathJudge.init()
     
     this.currentLevelSteps = 0
+    this.currentCombo = 0
+    this.maxCombo = 0
+    this.lastPlantType = null
+    this.comboScore = 0
+    if (this.hintPanel) {
+      this.hintPanel.updateCombo(0, 0)
+    }
     
     const hasExistingScore = this.hintPanel && this.hintPanel.getScore() > 0
     this.hintPanel.init(hasExistingScore)
@@ -515,6 +526,47 @@ export class GameScene extends Phaser.Scene {
     })
   }
 
+  updatePlantCombo(plantType) {
+    if (plantType === null) {
+      return
+    }
+    
+    if (this.lastPlantType === null) {
+      this.currentCombo = 1
+    } else if (plantType === this.lastPlantType) {
+      this.currentCombo++
+    } else {
+      this.currentCombo = 1
+    }
+    
+    this.lastPlantType = plantType
+    
+    if (this.currentCombo > this.maxCombo) {
+      this.maxCombo = this.currentCombo
+    }
+    
+    const baseScore = 10
+    let plantScore = baseScore
+    if (this.currentCombo > 1) {
+      plantScore = baseScore * this.currentCombo
+    }
+    this.comboScore += plantScore
+    
+    if (this.hintPanel) {
+      this.hintPanel.updateCombo(this.currentCombo, this.maxCombo)
+    }
+    
+    return plantScore
+  }
+
+  resetCombo() {
+    this.currentCombo = 0
+    this.lastPlantType = null
+    if (this.hintPanel) {
+      this.hintPanel.updateCombo(0, this.maxCombo)
+    }
+  }
+
   onPathComplete(path) {
     if (this.isAnimating || this.isTutorialMode) return
     
@@ -533,7 +585,7 @@ export class GameScene extends Phaser.Scene {
     }
     
     const litCount = this.plantState.getLitCount()
-    const levelScore = litCount * 10 + 50
+    const levelScore = this.comboScore + 50
     this.hintPanel.updateScore(levelScore)
     this.totalScore += levelScore
     
@@ -585,7 +637,8 @@ export class GameScene extends Phaser.Scene {
             false,
             stars,
             completionSteps,
-            true
+            true,
+            this.maxCombo
           )
         } else if (this.isWorkshopMode) {
           this.hintPanel.showLevelComplete(
@@ -602,7 +655,8 @@ export class GameScene extends Phaser.Scene {
             true,
             stars,
             completionSteps,
-            true
+            true,
+            this.maxCombo
           )
         } else {
           this.hintPanel.showLevelComplete(
@@ -615,7 +669,8 @@ export class GameScene extends Phaser.Scene {
             false,
             stars,
             completionSteps,
-            canNext
+            canNext,
+            this.maxCombo
           )
         }
         this.isAnimating = false
@@ -772,7 +827,8 @@ export class GameScene extends Phaser.Scene {
           false,
           stars,
           completionSteps,
-          true
+          true,
+          this.maxCombo
         )
       }
     }
@@ -999,8 +1055,13 @@ export class GameScene extends Phaser.Scene {
     this.refreshUndoRedoButtons()
     
     this.currentLevelSteps = 0
+    this.currentCombo = 0
+    this.maxCombo = 0
+    this.lastPlantType = null
+    this.comboScore = 0
     if (this.hintPanel) {
       this.hintPanel.updateSteps(0)
+      this.hintPanel.updateCombo(0, 0)
     }
     
     const startPos = this.levelMap.getWorldPosition(
@@ -1029,13 +1090,13 @@ export class GameScene extends Phaser.Scene {
     
     const bg = this.add.rectangle(
       width / 2, height / 2,
-      width * 0.85, 350,
+      width * 0.85, 380,
       0x0d1117, 0.95
     )
     bg.setStrokeStyle(3, 0xfbbf24, 0.8)
     panel.add(bg)
     
-    const title = this.add.text(width / 2, height / 2 - 130, '🔥 每日挑战完成！', {
+    const title = this.add.text(width / 2, height / 2 - 145, '🔥 每日挑战完成！', {
       fontSize: '28px',
       fill: '#fbbf24',
       fontStyle: 'bold'
@@ -1043,7 +1104,7 @@ export class GameScene extends Phaser.Scene {
     title.setOrigin(0.5)
     panel.add(title)
     
-    const scoreInfo = this.add.text(width / 2, height / 2 - 75, `获得 ${score} 分`, {
+    const scoreInfo = this.add.text(width / 2, height / 2 - 90, `获得 ${score} 分`, {
       fontSize: '22px',
       fill: '#22c55e',
       fontStyle: 'bold'
@@ -1051,7 +1112,15 @@ export class GameScene extends Phaser.Scene {
     scoreInfo.setOrigin(0.5)
     panel.add(scoreInfo)
     
-    const subtitle = this.add.text(width / 2, height / 2 - 35, '今日挑战已完成，明天再来！', {
+    const maxComboInfo = this.add.text(width / 2, height / 2 - 55, `🔥 最高连击: ${this.maxCombo} 连`, {
+      fontSize: '16px',
+      fill: '#f97316',
+      fontStyle: 'bold'
+    })
+    maxComboInfo.setOrigin(0.5)
+    panel.add(maxComboInfo)
+    
+    const subtitle = this.add.text(width / 2, height / 2 - 20, '今日挑战已完成，明天再来！', {
       fontSize: '16px',
       fill: '#e2e8f0',
       align: 'center'
@@ -1059,28 +1128,28 @@ export class GameScene extends Phaser.Scene {
     subtitle.setOrigin(0.5)
     panel.add(subtitle)
     
-    const noReplay = this.add.text(width / 2, height / 2, '每日挑战仅可完成一次，不可重玩', {
+    const noReplay = this.add.text(width / 2, height / 2 + 15, '每日挑战仅可完成一次，不可重玩', {
       fontSize: '13px',
       fill: '#f87171'
     })
     noReplay.setOrigin(0.5)
     panel.add(noReplay)
     
-    const streakInfo = this.add.text(width / 2, height / 2 + 35, '保持连续打卡，解锁更多奖励！', {
+    const streakInfo = this.add.text(width / 2, height / 2 + 50, '保持连续打卡，解锁更多奖励！', {
       fontSize: '14px',
       fill: '#fbbf24'
     })
     streakInfo.setOrigin(0.5)
     panel.add(streakInfo)
     
-    const rewardHint = this.add.text(width / 2, height / 2 + 65, '🌟 连续7天 · 特殊徽章 + 主题皮肤', {
+    const rewardHint = this.add.text(width / 2, height / 2 + 80, '🌟 连续7天 · 特殊徽章 + 主题皮肤', {
       fontSize: '13px',
       fill: '#a78bfa'
     })
     rewardHint.setOrigin(0.5)
     panel.add(rewardHint)
     
-    const closeBtn = this.add.text(width / 2, height / 2 + 110, '✓ 确认', {
+    const closeBtn = this.add.text(width / 2, height / 2 + 125, '✓ 确认', {
       fontSize: '18px',
       fill: '#fbbf24',
       fontStyle: 'bold',
