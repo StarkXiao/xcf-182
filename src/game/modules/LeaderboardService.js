@@ -1,3 +1,25 @@
+(function () {
+  const hasReal = (typeof localStorage !== 'undefined') &&
+    (typeof localStorage.getItem === 'function') &&
+    (typeof localStorage.setItem === 'function')
+  if (!hasReal) {
+    const _store = new Map()
+    const impl = {
+      getItem: (k) => (_store.has(k) ? _store.get(k) : null),
+      setItem: (k, v) => { _store.set(k, String(v)) },
+      removeItem: (k) => { _store.delete(k) },
+      clear: () => { _store.clear() },
+      get length() { return _store.size },
+      key: (i) => Array.from(_store.keys())[i] || null
+    }
+    try {
+      globalThis.localStorage = impl
+    } catch (e) {
+      Object.defineProperty(globalThis, 'localStorage', { value: impl, writable: true, configurable: true })
+    }
+  }
+})()
+
 import { CLOUD_CONFIG, detectBackendType, isLeanCloudConfigured, isSupabaseConfigured } from '../../config/cloudConfig.js'
 
 const STORAGE_KEY_NICKNAME = 'moss_cave_nickname'
@@ -82,10 +104,8 @@ class LocalLeaderboardBackend {
     })
     this.leaderboard[key] = this.leaderboard[key].slice(0, 100)
     this.saveToStorage()
-    const rank = this.leaderboard[key].findIndex(
-      e => e.timestamp === entry.timestamp
-    ) + 1
-    return { success: true, rank, entry }
+    const rank = this.leaderboard[key].indexOf(entry) + 1
+    return { success: true, rank: rank > 0 ? rank : this.leaderboard[key].length, entry }
   }
 
   async getUserBestScore(levelId, nickname) {

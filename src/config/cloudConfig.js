@@ -1,15 +1,31 @@
+function readEnv(key, def = '') {
+  try {
+    if (typeof import.meta !== 'undefined' && import.meta.env) {
+      const val = import.meta.env[key]
+      if (val != null) return String(val)
+    }
+  } catch (e) {}
+  try {
+    if (typeof process !== 'undefined' && process.env) {
+      const val = process.env[key]
+      if (val != null) return String(val)
+    }
+  } catch (e) {}
+  return def
+}
+
 export const CLOUD_CONFIG = {
-  backend: (import.meta.env.LEADERBOARD_BACKEND || '').trim(),
+  backend: (readEnv('LEADERBOARD_BACKEND', '')).trim(),
 
   leancloud: {
-    appId: (import.meta.env.VITE_LEANCLOUD_APP_ID || '').trim(),
-    appKey: (import.meta.env.VITE_LEANCLOUD_APP_KEY || '').trim(),
-    serverURL: (import.meta.env.VITE_LEANCLOUD_SERVER_URL || '').trim()
+    appId: (readEnv('VITE_LEANCLOUD_APP_ID', '')).trim(),
+    appKey: (readEnv('VITE_LEANCLOUD_APP_KEY', '')).trim(),
+    serverURL: (readEnv('VITE_LEANCLOUD_SERVER_URL', '')).trim()
   },
 
   supabase: {
-    url: (import.meta.env.VITE_SUPABASE_URL || '').trim(),
-    anonKey: (import.meta.env.VITE_SUPABASE_ANON_KEY || '').trim()
+    url: (readEnv('VITE_SUPABASE_URL', '')).trim(),
+    anonKey: (readEnv('VITE_SUPABASE_ANON_KEY', '')).trim()
   }
 }
 
