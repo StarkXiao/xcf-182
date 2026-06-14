@@ -56,6 +56,7 @@ class LocalWorkshopBackend {
         likesCount: 42,
         playsCount: 156,
         totalPoints: 200,
+        hotScore: 42 * 3 + 156,
         createdAt: Date.now() - 86400000 * 3
       },
       {
@@ -93,6 +94,7 @@ class LocalWorkshopBackend {
         likesCount: 28,
         playsCount: 93,
         totalPoints: 230,
+        hotScore: 28 * 3 + 93,
         createdAt: Date.now() - 86400000 * 7
       },
       {
@@ -139,6 +141,7 @@ class LocalWorkshopBackend {
         likesCount: 67,
         playsCount: 245,
         totalPoints: 410,
+        hotScore: 67 * 3 + 245,
         createdAt: Date.now() - 86400000 * 1
       }
     ]
@@ -158,8 +161,8 @@ class LocalWorkshopBackend {
     
     if (sortBy === 'hot') {
       levels.sort((a, b) => {
-        const aScore = a.likesCount * 2 + a.playsCount
-        const bScore = b.likesCount * 2 + b.playsCount
+        const aScore = a.likesCount * 3 + a.playsCount
+        const bScore = b.likesCount * 3 + b.playsCount
         if (bScore !== aScore) return bScore - aScore
         return b.createdAt - a.createdAt
       })
@@ -201,6 +204,7 @@ class LocalWorkshopBackend {
       likesCount: 0,
       playsCount: 0,
       totalPoints,
+      hotScore: 0,
       createdAt: Date.now()
     }
     
@@ -226,6 +230,7 @@ class LocalWorkshopBackend {
     const level = this.levels.find(l => l.id === levelId)
     if (level) {
       level.likesCount++
+      level.hotScore = level.likesCount * 3 + level.playsCount
     }
     
     this.saveToStorage()
@@ -242,6 +247,7 @@ class LocalWorkshopBackend {
       const level = this.levels.find(l => l.id === levelId)
       if (level && level.likesCount > 0) {
         level.likesCount--
+        level.hotScore = level.likesCount * 3 + level.playsCount
       }
       
       this.saveToStorage()
@@ -257,6 +263,7 @@ class LocalWorkshopBackend {
     const level = this.levels.find(l => l.id === levelId)
     if (level) {
       level.playsCount++
+      level.hotScore = level.likesCount * 3 + level.playsCount
       this.saveToStorage()
     }
     return { success: true }
@@ -458,7 +465,13 @@ class WorkshopService {
   async incrementPlayCount(levelId) {
     try {
       await this.ensureBackendReady()
-      return await this.backend.incrementPlayCount(levelId)
+      const result = await this.backend.incrementPlayCount(levelId)
+      if (this.backend !== this.localBackend) {
+        try {
+          await this.localBackend.incrementPlayCount(levelId)
+        } catch (e) {}
+      }
+      return result
     } catch (e) {
       console.error('[Workshop] incrementPlayCount failed, using local:', e)
       return await this.localBackend.incrementPlayCount(levelId)

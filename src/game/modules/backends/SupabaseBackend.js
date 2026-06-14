@@ -145,8 +145,7 @@ export class SupabaseBackend {
         .eq('is_approved', true)
 
       if (sortBy === 'hot') {
-        query = query.order('likes_count', { ascending: false })
-                     .order('plays_count', { ascending: false })
+        query = query.order('hot_score', { ascending: false })
                      .order('created_at', { ascending: false })
       } else if (sortBy === 'newest') {
         query = query.order('created_at', { ascending: false })
@@ -276,17 +275,11 @@ export class SupabaseBackend {
     try {
       const { error } = await this.supabase
         .rpc('increment_workshop_play_count', { level_id: levelId })
-      if (error) {
-        const { error: updateError } = await this.supabase
-          .from('workshop_levels')
-          .update({ plays_count: this.supabase.raw('plays_count + 1') })
-          .eq('id', levelId)
-        if (updateError) throw updateError
-      }
+      if (error) throw error
       return { success: true }
     } catch (e) {
       console.error('[Workshop] Supabase incrementPlayCount failed:', e)
-      return { success: false }
+      throw e
     }
   }
 
@@ -306,6 +299,7 @@ export class SupabaseBackend {
       likesCount: item.likes_count,
       playsCount: item.plays_count,
       totalPoints: item.total_points,
+      hotScore: item.hot_score,
       createdAt: new Date(item.created_at).getTime()
     }
   }

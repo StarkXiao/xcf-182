@@ -20,9 +20,15 @@ CREATE TABLE IF NOT EXISTS public.workshop_levels (
     likes_count     integer NOT NULL DEFAULT 0,
     plays_count     integer NOT NULL DEFAULT 0,
     total_points    integer NOT NULL DEFAULT 0,
+    hot_score       integer NOT NULL DEFAULT 0,
     is_approved     boolean NOT NULL DEFAULT true,
     created_at      timestamptz NOT NULL DEFAULT now()
 );
+
+-- 1b. 如果表已存在但缺少 hot_score 列，手动执行：
+-- ALTER TABLE public.workshop_levels ADD COLUMN IF NOT EXISTS hot_score integer NOT NULL DEFAULT 0;
+-- 然后回填：
+-- UPDATE public.workshop_levels SET hot_score = likes_count * 3 + plays_count;
 
 -- 2. 创建点赞记录表（防止重复点赞）
 CREATE TABLE IF NOT EXISTS public.workshop_likes (
@@ -33,9 +39,10 @@ CREATE TABLE IF NOT EXISTS public.workshop_likes (
     UNIQUE(level_id, nickname)
 );
 
--- 3. 创建索引：按热度排序（点赞数+游玩数）
+-- 3. 创建索引：按热度排序（hot_score = likes_count * 3 + plays_count）
+DROP INDEX IF EXISTS idx_workshop_levels_hot;
 CREATE INDEX IF NOT EXISTS idx_workshop_levels_hot
-    ON public.workshop_levels (likes_count DESC, plays_count DESC, created_at DESC);
+    ON public.workshop_levels (hot_score DESC, created_at DESC);
 
 -- 4. 创建索引：按最新排序
 CREATE INDEX IF NOT EXISTS idx_workshop_levels_newest
@@ -77,29 +84,57 @@ CREATE POLICY "Allow insert workshop likes"
     FOR INSERT
     WITH CHECK (true);
 
--- 11. 创建更新点赞数的函数
+-- 11. 点赞表策略：允许所有人删除（取消点赞）
+DROP POLICY IF EXISTS "Allow delete workshop likes" ON public.workshop_likes;
+CREATE POLICY "Allow delete workshop likes"
+    ON public.workshop_likes
+    FOR DELETE
+    USING (true);
+
+-- 12. 创建更新点赞数 + hot_score 的触发器函数
 CREATE OR REPLACE FUNCTION update_likes_count()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+SECURITY DEFINER
+LANGUAGE plpgsql
+AS $$
 BEGIN
     IF TG_OP = 'INSERT' THEN
         UPDATE public.workshop_levels
-        SET likes_count = likes_count + 1
+        SET likes_count = likes_count + 1,
+            hot_score   = (likes_count + 1) * 3 + plays_count
         WHERE id = NEW.level_id;
+        RETURN NEW;
     ELSIF TG_OP = 'DELETE' THEN
         UPDATE public.workshop_levels
-        SET likes_count = likes_count - 1
+        SET likes_count = GREATEST(likes_count - 1, 0),
+            hot_score   = GREATEST(likes_count - 1, 0) * 3 + plays_count
         WHERE id = OLD.level_id;
+        RETURN OLD;
     END IF;
-    RETURN NEW;
+    RETURN NULL;
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
--- 12. 创建点赞触发器
+-- 13. 创建点赞触发器
 DROP TRIGGER IF EXISTS trigger_update_likes_count ON public.workshop_likes;
 CREATE TRIGGER trigger_update_likes_count
 AFTER INSERT OR DELETE ON public.workshop_likes
 FOR EACH ROW
 EXECUTE FUNCTION update_likes_count();
+
+-- 14. 创建游玩次数自增 RPC 函数（供客户端 .rpc() 调用）
+CREATE OR REPLACE FUNCTION increment_workshop_play_count(level_id uuid)
+RETURNS void
+SECURITY DEFINER
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    UPDATE public.workshop_levels
+    SET plays_count = plays_count + 1,
+        hot_score   = likes_count * 3 + (plays_count + 1)
+    WHERE id = level_id;
+END;
+$$;
 
 -- ============================================================
 -- 验证脚本
@@ -116,7 +151,12 @@ EXECUTE FUNCTION update_likes_count();
 --     '[]', '[]', '[{"row":0,"col":0},{"row":4,"col":4}]', 100
 -- );
 
+-- 测试游玩计数自增
+-- SELECT increment_workshop_play_count('此处替换为关卡uuid');
+
 -- 按热度获取关卡列表
--- SELECT * FROM public.workshop_levels
--- ORDER BY likes_count DESC, plays_count DESC, created_at DESC
+-- SELECT *, (likes_count * 3 + plays_count) AS computed_hot
+-- FROM public.workshop_levels
+-- WHERE is_approved = true
+-- ORDER BY hot_score DESC, created_at DESC
 -- LIMIT 20;

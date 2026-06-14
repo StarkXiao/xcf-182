@@ -173,6 +173,7 @@ function handleLikeChanged(levelId, isLiked) {
   const level = levels.value.find(l => l.id === levelId)
   if (level) {
     level.likesCount += isLiked ? 1 : -1
+    level.hotScore = level.likesCount * 3 + level.playsCount
   }
 }
 
