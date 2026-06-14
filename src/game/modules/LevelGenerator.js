@@ -679,14 +679,69 @@ export class LevelGenerator {
       return false
     }
     
+    const pathCells = []
+    for (const key of pathSet) {
+      const [r, c] = key.split(',').map(Number)
+      pathCells.push({ row: r, col: c, key })
+    }
+    
+    for (const cell of pathCells) {
+      if (cell.row === start.row && cell.col === start.col) continue
+      if (cell.row === end.row && cell.col === end.col) continue
+      
+      obsSet.add(cell.key)
+      
+      const hasPath = this._bfsHasPath(start, end, rows, cols, obsSet)
+      
+      obsSet.delete(cell.key)
+      
+      if (hasPath) {
+        return true
+      }
+    }
+    
+    for (let i = 0; i < pathCells.length; i++) {
+      for (let j = i + 1; j < pathCells.length; j++) {
+        const c1 = pathCells[i]
+        const c2 = pathCells[j]
+        const dr = Math.abs(c1.row - c2.row)
+        const dc = Math.abs(c1.col - c2.col)
+        if (dr + dc !== 1) continue
+        
+        if ((c1.row === start.row && c1.col === start.col) || 
+            (c2.row === start.row && c2.col === start.col)) continue
+        if ((c1.row === end.row && c1.col === end.col) || 
+            (c2.row === end.row && c2.col === end.col)) continue
+        
+        obsSet.add(c1.key)
+        obsSet.add(c2.key)
+        
+        const hasPath = this._bfsHasPath(start, end, rows, cols, obsSet)
+        
+        obsSet.delete(c1.key)
+        obsSet.delete(c2.key)
+        
+        if (hasPath) {
+          return true
+        }
+      }
+    }
+    
+    return this._dfsHasAlternative(start, end, rows, cols, obstacles, pathSet)
+  }
+
+  _dfsHasAlternative(start, end, rows, cols, obstacles, pathSet) {
+    const obsSet = new Set(obstacles.map(o => `${o.row},${o.col}`))
+    const startKey = `${start.row},${start.col}`
+    const endKey = `${end.row},${end.col}`
+    
     let pathCount = 0
-    const maxPaths = 2
-    const maxSearch = 200000
+    const maxPathsToFind = 2
+    const maxSearch = 2000000
     let searched = 0
     
-    const correctPathLen = pathSet.size
     const totalCells = rows * cols
-    const maxPathLen = Math.min(totalCells, correctPathLen * 10)
+    const maxPathLen = totalCells
     
     const dirs = [
       { dr: -1, dc: 0 },
@@ -699,18 +754,26 @@ export class LevelGenerator {
       row: start.row,
       col: start.col,
       visited: new Set([startKey]),
-      len: 1
+      len: 1,
+      hasDeviated: false
     }]
     
-    while (stack.length > 0 && pathCount < maxPaths && searched < maxSearch) {
+    while (stack.length > 0 && pathCount < maxPathsToFind && searched < maxSearch) {
       searched++
       const current = stack.pop()
       const currentKey = `${current.row},${current.col}`
       
       if (currentKey === endKey) {
-        pathCount++
-        if (pathCount >= maxPaths) {
-          return true
+        if (current.hasDeviated) {
+          pathCount++
+          if (pathCount >= 1) {
+            return true
+          }
+        } else {
+          pathCount++
+          if (pathCount >= maxPathsToFind) {
+            return true
+          }
         }
         continue
       }
@@ -737,13 +800,15 @@ export class LevelGenerator {
         const nextRemaining = Math.abs(nr - end.row) + Math.abs(nc - end.col)
         if (current.len + 1 + nextRemaining > maxPathLen) continue
         
+        const nextDeviated = current.hasDeviated || !pathSet.has(nKey)
         const newVisited = new Set(current.visited)
         newVisited.add(nKey)
         stack.push({
           row: nr,
           col: nc,
           visited: newVisited,
-          len: current.len + 1
+          len: current.len + 1,
+          hasDeviated: nextDeviated
         })
       }
     }
