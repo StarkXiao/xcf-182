@@ -1,5 +1,6 @@
 import { PLANT_TYPES } from '../data/levels.js'
 import { ThemeManager } from './ThemeManager.js'
+import { AudioManager } from './AudioManager.js'
 
 export class PlantState {
   constructor(scene, levelMap) {
@@ -9,8 +10,11 @@ export class PlantState {
     this.litPlants = new Set()
     this.breathingTweens = []
     this.pulseTweens = []
+    this.currentCombo = 0
     
     this.themeManager = ThemeManager.getInstance()
+    this.audioManager = AudioManager.getInstance()
+    this.audioManager.init()
     
     this.themeUnsubscribe = this.themeManager.onThemeChange((theme) => {
       this.applyTheme(theme)
@@ -633,11 +637,16 @@ export class PlantState {
     this.breathingTweens.push(breatheIn, glowPulse)
   }
 
+  setCombo(combo) {
+    this.currentCombo = Math.max(0, combo)
+  }
+
   lightUp(plant) {
     if (plant.getData('isLit')) return false
     
     const cell = plant.getData('cell')
     const plantType = plant.getData('plantType')
+    const type = plant.getData('type')
     
     plant.setData('isLit', true)
     cell.isLit = true
@@ -670,7 +679,7 @@ export class PlantState {
       duration: 350
     })
     
-    this.playLightSound()
+    this.audioManager.playPlantLight(type, this.currentCombo)
     
     return true
   }
@@ -800,35 +809,6 @@ export class PlantState {
       plant.addAt(newSprite, index)
       oldSprite.destroy()
       plant.plantSprite = newSprite
-    }
-  }
-
-  playLightSound() {
-    if (!this.scene.sound) return
-    
-    try {
-      const synth = window.AudioContext || window.webkitAudioContext
-      if (!synth) return
-      
-      if (!this.audioContext) {
-        this.audioContext = new synth()
-      }
-      
-      const oscillator = this.audioContext.createOscillator()
-      const gainNode = this.audioContext.createGain()
-      
-      oscillator.connect(gainNode)
-      gainNode.connect(this.audioContext.destination)
-      
-      oscillator.frequency.setValueAtTime(523, this.audioContext.currentTime)
-      oscillator.frequency.exponentialRampToValueAtTime(784, this.audioContext.currentTime + 0.1)
-      
-      gainNode.gain.setValueAtTime(0.1, this.audioContext.currentTime)
-      gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.2)
-      
-      oscillator.start()
-      oscillator.stop(this.audioContext.currentTime + 0.2)
-    } catch (e) {
     }
   }
 

@@ -10,6 +10,7 @@ import { getDialogueForLevel, STORY_DIALOGUES } from '../data/story.js'
 import { getLeaderboardService } from '../modules/LeaderboardService.js'
 import { BossLevelManager } from '../modules/BossLevelManager.js'
 import { getLevelProgressManager } from '../modules/LevelProgress.js'
+import { AudioManager } from '../modules/AudioManager.js'
 
 export class GameScene extends Phaser.Scene {
   constructor() {
@@ -48,6 +49,7 @@ export class GameScene extends Phaser.Scene {
     this.lastPlantType = null
     this.comboScore = 0
     this.thornDamage = 0
+    this.audioManager = null
   }
 
   setDailyChallengeConfig(config) {
@@ -87,6 +89,10 @@ export class GameScene extends Phaser.Scene {
     this.leaderboardService = getLeaderboardService()
     this.levelProgressManager = getLevelProgressManager()
     
+    this.audioManager = AudioManager.getInstance()
+    this.audioManager.init()
+    this.audioManager.fadeInBackgroundNoise(1.5)
+    
     this.effects = new Effects(this)
     this.effects.init(this.themeColors)
     
@@ -98,6 +104,12 @@ export class GameScene extends Phaser.Scene {
     this.bossLevelManager = new BossLevelManager(this, this.levelMap)
     
     this.effects.setLevelMap(this.levelMap)
+    
+    this.input.once('pointerdown', () => {
+      if (this.audioManager) {
+        this.audioManager.resume()
+      }
+    })
     
     if (this.isDailyChallenge && this.dailyLevel) {
       this.levelMap.setDailyLevel(this.dailyLevel)
@@ -547,6 +559,10 @@ export class GameScene extends Phaser.Scene {
       this.maxCombo = this.currentCombo
     }
     
+    if (this.plantState) {
+      this.plantState.setCombo(this.currentCombo)
+    }
+    
     const baseScore = 10
     let plantScore = baseScore
     if (this.currentCombo > 1) {
@@ -605,10 +621,8 @@ export class GameScene extends Phaser.Scene {
     )
     this.effects.createSuccessEffect(endPos.x, endPos.y)
     
-    let stars = 1
-    let canNext = true
     const isNormalMode = !this.isDailyChallenge && !this.isStoryMode && !this.isRandomMode && !this.isWorkshopMode
-    
+    let stars = 1
     if (isNormalMode && this.levelMap.currentLevel && this.levelProgressManager) {
       stars = this.calculateStars(
         this.levelMap.currentLevel,
@@ -616,6 +630,15 @@ export class GameScene extends Phaser.Scene {
         completionSteps,
         currentAttempts
       )
+    }
+    
+    if (this.audioManager) {
+      this.audioManager.playSuccess(stars)
+    }
+    
+    let canNext = true
+    
+    if (isNormalMode && this.levelMap.currentLevel && this.levelProgressManager) {
       canNext = this.canUnlockNextLevel(this.currentLevelIndex, stars)
       
       const levelId = this.levelMap.currentLevel.id
@@ -1009,6 +1032,9 @@ export class GameScene extends Phaser.Scene {
 
   onPathInvalid() {
     this.hintPanel.incrementAttempts()
+    if (this.audioManager) {
+      this.audioManager.playFailure()
+    }
   }
 
   nextLevel() {
@@ -1302,6 +1328,9 @@ export class GameScene extends Phaser.Scene {
   }
 
   destroy() {
+    if (this.audioManager) {
+      this.audioManager.fadeOutBackgroundNoise(0.5)
+    }
     if (this.bossLevelManager) this.bossLevelManager.destroy()
     if (this.levelMap) this.levelMap = null
     if (this.plantState) this.plantState.destroy()

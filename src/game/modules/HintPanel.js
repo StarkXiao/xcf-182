@@ -1,6 +1,7 @@
 import { LEVELS } from '../data/levels.js'
 import { ThemeManager } from './ThemeManager.js'
 import { getLeaderboardService } from './LeaderboardService.js'
+import { AudioManager } from './AudioManager.js'
 
 export class HintPanel {
   constructor(scene) {
@@ -35,9 +36,14 @@ export class HintPanel {
     this.maxComboText = null
     this.currentCombo = 0
     this.maxCombo = 0
+    this.audioToggleBtn = null
+    this.audioToggleBtnBg = null
+    this.muteUnsubscribe = null
     
     this.themeManager = ThemeManager.getInstance()
     this.themeManager.loadThemeFromStorage()
+    this.audioManager = AudioManager.getInstance()
+    this.audioManager.init()
   }
 
   setDailyChallengeMode(enabled) {
@@ -166,19 +172,58 @@ export class HintPanel {
     this.maxComboText.setDepth(101)
     
     const currentTheme = this.themeManager.getCurrentTheme()
-    const btnX = width - 40
     const btnY = 35
-    const btnW = 60
+    const btnW = 50
     const btnH = 44
+    const btnSpacing = 8
     
-    const themeBtnBg = this.scene.add.rectangle(btnX, btnY, btnW, btnH, 0x1e1b4b, 0.95)
+    const audioBtnX = width - 35
+    const themeBtnX = audioBtnX - btnW - btnSpacing
+    
+    const isMuted = this.audioManager.isMuted
+    const audioBtnBg = this.scene.add.rectangle(audioBtnX, btnY, btnW, btnH, 0x1e1b4b, 0.95)
+    audioBtnBg.setStrokeStyle(3, isMuted ? 0x6b7280 : 0x22c55e, 0.9)
+    audioBtnBg.setDepth(200)
+    audioBtnBg.setInteractive(new Phaser.Geom.Rectangle(-btnW / 2, -btnH / 2, btnW, btnH), Phaser.Geom.Rectangle.Contains)
+    audioBtnBg.input.cursor = 'pointer'
+    
+    const audioBtn = this.scene.add.text(audioBtnX, btnY, isMuted ? '🔇' : '🔊', {
+      fontSize: '18px',
+      fill: isMuted ? '#6b7280' : '#22c55e',
+      fontStyle: 'bold'
+    })
+    audioBtn.setOrigin(0.5, 0.5)
+    audioBtn.setDepth(201)
+    
+    audioBtnBg.on('pointerdown', (pointer) => {
+      this.audioManager.toggleMute()
+    })
+    
+    audioBtnBg.on('pointerover', () => {
+      audioBtnBg.setFillStyle(0x374151, 0.95)
+    })
+    audioBtnBg.on('pointerout', () => {
+      audioBtnBg.setFillStyle(0x1e1b4b, 0.95)
+    })
+    
+    this.muteUnsubscribe = this.audioManager.onMuteChange((muted) => {
+      if (audioBtn && audioBtnBg) {
+        audioBtn.setText(muted ? '🔇' : '🔊')
+        audioBtn.setFill(muted ? '#6b7280' : '#22c55e')
+        audioBtnBg.setStrokeStyle(3, muted ? 0x6b7280 : 0x22c55e, 0.9)
+      }
+    })
+    
+    this.audioToggleBtn = audioBtn
+    this.audioToggleBtnBg = audioBtnBg
+    
+    const themeBtnBg = this.scene.add.rectangle(themeBtnX, btnY, btnW, btnH, 0x1e1b4b, 0.95)
     themeBtnBg.setStrokeStyle(3, 0xa78bfa, 0.9)
     themeBtnBg.setDepth(200)
     themeBtnBg.setInteractive(new Phaser.Geom.Rectangle(-btnW / 2, -btnH / 2, btnW, btnH), Phaser.Geom.Rectangle.Contains)
     themeBtnBg.input.cursor = 'pointer'
-    console.log('Theme button created at', btnX, btnY, 'size:', btnW, btnH)
     
-    const themeBtn = this.scene.add.text(btnX, btnY, `🎨 ${currentTheme.icon}`, {
+    const themeBtn = this.scene.add.text(themeBtnX, btnY, `🎨 ${currentTheme.icon}`, {
       fontSize: '18px',
       fill: '#a78bfa',
       fontStyle: 'bold'
@@ -187,12 +232,10 @@ export class HintPanel {
     themeBtn.setDepth(201)
     
     themeBtnBg.on('pointerdown', (pointer) => {
-      console.log('Theme button clicked! pointer:', pointer.x, pointer.y)
       this.toggleThemePanel()
     })
     
     themeBtnBg.on('pointerover', () => {
-      console.log('Theme button pointerover')
       themeBtnBg.setFillStyle(0x3b0764, 0.95)
     })
     themeBtnBg.on('pointerout', () => {
@@ -1279,6 +1322,10 @@ export class HintPanel {
   }
 
   destroy() {
+    if (this.muteUnsubscribe) {
+      this.muteUnsubscribe()
+      this.muteUnsubscribe = null
+    }
     if (this.panel) {
       this.panel.destroy()
     }
