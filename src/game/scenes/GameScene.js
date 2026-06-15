@@ -1093,6 +1093,9 @@ export class GameScene extends Phaser.Scene {
     if (this.audioManager) {
       this.audioManager.playFailure()
     }
+    if (this.creature && this.effects) {
+      this.effects.playShakeHead(this.creature)
+    }
   }
 
   nextLevel() {

@@ -711,6 +711,323 @@ export class Effects {
     timeline.play()
   }
 
+  animateCreatureAlongPath(creature, path, onComplete) {
+    if (!creature || !path || path.length === 0) {
+      if (onComplete) onComplete()
+      return
+    }
+    
+    this.creature = creature
+    this.creatureTweens.forEach(tween => tween.stop())
+    this.creatureTweens = []
+    
+    const positions = path.map((cell) => {
+      const pos = this.levelMap.getWorldPosition(cell.row, cell.col)
+      return { x: pos.x, y: pos.y }
+    })
+    
+    const timeline = this.scene.tweens.createTimeline()
+    
+    positions.forEach((pos, index) => {
+      if (index === 0) return
+      
+      const prevPos = positions[index - 1]
+      const distance = Math.sqrt(Math.pow(pos.x - prevPos.x, 2) + Math.pow(pos.y - prevPos.y, 2))
+      const moveDuration = distance * 8
+      
+      const dx = pos.x - prevPos.x
+      const dy = pos.y - prevPos.y
+      const targetAngle = Math.atan2(dy, dx)
+      
+      const currentRotation = creature.rotation
+      let normalizedTarget = targetAngle
+      
+      while (normalizedTarget - currentRotation > Math.PI) normalizedTarget -= Math.PI * 2
+      while (normalizedTarget - currentRotation < -Math.PI) normalizedTarget += Math.PI * 2
+      
+      const rotationDiff = Math.abs(normalizedTarget - currentRotation)
+      
+      if (rotationDiff > 0.2 && index > 1) {
+        const headTurnDuration = Math.min(120, moveDuration * 0.3)
+        timeline.add({
+          targets: creature,
+          x: prevPos.x,
+          y: prevPos.y,
+          duration: 0
+        })
+        
+        timeline.add({
+          targets: creature,
+          rotation: normalizedTarget,
+          scaleX: 1.08,
+          scaleY: 0.94,
+          duration: headTurnDuration,
+          ease: 'Cubic.Out'
+        })
+        
+        timeline.add({
+          targets: creature,
+          scaleX: 1,
+          scaleY: 1,
+          duration: 60,
+          ease: 'Back.Out'
+        })
+      } else if (index === 1) {
+        timeline.add({
+          targets: creature,
+          rotation: normalizedTarget,
+          duration: 150,
+          ease: 'Cubic.Out'
+        })
+      }
+      
+      timeline.add({
+        targets: creature,
+        x: pos.x,
+        y: pos.y,
+        duration: moveDuration,
+        ease: 'Sine.easeInOut',
+        onStart: () => {
+          const bounceY = this.scene.tweens.add({
+            targets: creature,
+            scaleY: { from: 1, to: 0.88, to: 1.05, to: 1 },
+            scaleX: { from: 1, to: 1.08, to: 0.96, to: 1 },
+            duration: moveDuration,
+            ease: 'Sine.easeInOut'
+          })
+          this.creatureTweens.push(bounceY)
+          
+          this.createWalkParticles(pos.x, pos.y)
+        }
+      })
+      
+      if (index < positions.length - 1) {
+        const nextPos = positions[index + 1]
+        const nextDx = nextPos.x - pos.x
+        const nextDy = nextPos.y - pos.y
+        const nextAngle = Math.atan2(nextDy, nextDx)
+        
+        let normalizedNext = nextAngle
+        while (normalizedNext - normalizedTarget > Math.PI) normalizedNext -= Math.PI * 2
+        while (normalizedNext - normalizedTarget < -Math.PI) normalizedNext += Math.PI * 2
+        
+        const nextRotationDiff = Math.abs(normalizedNext - normalizedTarget)
+        
+        if (nextRotationDiff > 0.3) {
+          timeline.add({
+            targets: creature,
+            x: pos.x,
+            y: pos.y,
+            duration: 40
+          })
+        }
+      }
+    })
+    
+    timeline.setCallback('onComplete', () => {
+      this.playVictoryDance(creature, onComplete)
+    })
+    
+    timeline.play()
+  }
+
+  playVictoryDance(creature, onComplete) {
+    const victoryTimeline = this.scene.tweens.createTimeline()
+    
+    victoryTimeline.add({
+      targets: creature,
+      rotation: 0,
+      scaleX: 1,
+      scaleY: 1,
+      duration: 200,
+      ease: 'Cubic.Out'
+    })
+    
+    victoryTimeline.add({
+      targets: creature,
+      y: creature.y - 35,
+      scaleX: 0.9,
+      scaleY: 1.2,
+      duration: 250,
+      ease: 'Cubic.Out'
+    })
+    
+    victoryTimeline.add({
+      targets: creature,
+      y: creature.y,
+      scaleX: 1.15,
+      scaleY: 0.85,
+      duration: 150,
+      ease: 'Bounce.Out'
+    })
+    
+    victoryTimeline.add({
+      targets: creature,
+      y: creature.y - 25,
+      scaleX: 0.95,
+      scaleY: 1.15,
+      duration: 200,
+      ease: 'Cubic.Out'
+    })
+    
+    victoryTimeline.add({
+      targets: creature,
+      y: creature.y,
+      scaleX: 1.1,
+      scaleY: 0.9,
+      duration: 130,
+      ease: 'Bounce.Out'
+    })
+    
+    victoryTimeline.add({
+      targets: creature,
+      rotation: -0.3,
+      scaleX: 1.05,
+      scaleY: 1.05,
+      duration: 100,
+      ease: 'Cubic.Out'
+    })
+    
+    victoryTimeline.add({
+      targets: creature,
+      rotation: 0.3,
+      duration: 120,
+      ease: 'Cubic.InOut',
+      yoyo: true,
+      repeat: 2
+    })
+    
+    victoryTimeline.add({
+      targets: creature,
+      rotation: 0,
+      scaleX: 1,
+      scaleY: 1,
+      duration: 200,
+      ease: 'Elastic.Out'
+    })
+    
+    if (onComplete) {
+      victoryTimeline.setCallback('onComplete', onComplete)
+    }
+    
+    victoryTimeline.play()
+    
+    const endX = creature.x
+    const endY = creature.y
+    
+    for (let i = 0; i < 3; i++) {
+      this.scene.time.delayedCall(150 + i * 250, () => {
+        const colors = this.themeManager.getParticleColors().bgTints
+        this.scene.add.particles(endX, endY - 20, 'sparkle', {
+          speed: { min: 60, max: 180 },
+          angle: { min: 200, max: 340 },
+          scale: { start: 0.5, end: 0 },
+          alpha: { start: 1, end: 0 },
+          lifespan: 800,
+          tint: [...colors, 0xfbbf24, 0x22c55e],
+          quantity: 15,
+          duration: 300
+        })
+      })
+    }
+  }
+
+  playShakeHead(creature, onComplete) {
+    if (!creature) {
+      if (onComplete) onComplete()
+      return
+    }
+    
+    this.creatureTweens.forEach(tween => tween.stop())
+    this.creatureTweens = []
+    
+    const originalX = creature.x
+    const originalY = creature.y
+    const originalRotation = creature.rotation
+    const originalScaleX = creature.scaleX
+    const originalScaleY = creature.scaleY
+    
+    const shakeTimeline = this.scene.tweens.createTimeline()
+    
+    shakeTimeline.add({
+      targets: creature,
+      scaleX: 1.1,
+      scaleY: 0.92,
+      duration: 80,
+      ease: 'Cubic.Out'
+    })
+    
+    shakeTimeline.add({
+      targets: creature,
+      rotation: originalRotation - 0.35,
+      x: originalX - 6,
+      duration: 90,
+      ease: 'Cubic.InOut'
+    })
+    
+    shakeTimeline.add({
+      targets: creature,
+      rotation: originalRotation + 0.35,
+      x: originalX + 6,
+      duration: 110,
+      ease: 'Cubic.InOut'
+    })
+    
+    shakeTimeline.add({
+      targets: creature,
+      rotation: originalRotation - 0.25,
+      x: originalX - 4,
+      duration: 90,
+      ease: 'Cubic.InOut'
+    })
+    
+    shakeTimeline.add({
+      targets: creature,
+      rotation: originalRotation + 0.25,
+      x: originalX + 4,
+      duration: 90,
+      ease: 'Cubic.InOut'
+    })
+    
+    shakeTimeline.add({
+      targets: creature,
+      rotation: originalRotation - 0.15,
+      x: originalX - 2,
+      duration: 70,
+      ease: 'Cubic.InOut'
+    })
+    
+    shakeTimeline.add({
+      targets: creature,
+      x: originalX,
+      rotation: originalRotation,
+      scaleX: originalScaleX,
+      scaleY: originalScaleY,
+      duration: 200,
+      ease: 'Elastic.Out'
+    })
+    
+    this.scene.time.delayedCall(100, () => {
+      const colors = this.themeManager.getParticleColors().bgTints
+      this.scene.add.particles(creature.x, creature.y - 15, 'sparkle', {
+        speed: { min: 40, max: 100 },
+        angle: { min: 160, max: 200 },
+        scale: { start: 0.3, end: 0 },
+        alpha: { start: 0.8, end: 0 },
+        lifespan: 500,
+        tint: [0xef4444, 0xf97316],
+        quantity: 8,
+        duration: 200
+      })
+    })
+    
+    if (onComplete) {
+      shakeTimeline.setCallback('onComplete', onComplete)
+    }
+    
+    shakeTimeline.play()
+  }
+
   createWalkParticles(x, y) {
     const colors = this.themeManager.getParticleColors().bgTints
     this.scene.add.particles(x, y, 'sparkle', {
