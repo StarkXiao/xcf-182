@@ -15,6 +15,7 @@ export class PathJudge {
     this.maxHistorySize = 3
     this.historyStack = []
     this.redoStack = []
+    this.matchedBranchId = null
     
     this.themeManager = ThemeManager.getInstance()
     this.themeUnsubscribe = this.themeManager.onThemeChange((theme) => {
@@ -288,7 +289,7 @@ export class PathJudge {
       if (this.validatePath()) {
         this.showSuccessEffect()
         if (this.onPathComplete) {
-          this.onPathComplete(this.selectedPath)
+          this.onPathComplete(this.selectedPath, this.matchedBranchId)
         }
       } else {
         this.showErrorEffect()
@@ -312,7 +313,7 @@ export class PathJudge {
 
   validatePath() {
     const level = this.levelMap.currentLevel
-    const correctPath = level.correctPath
+    const correctPaths = level.correctPaths || [level.correctPath]
     
     if (this.selectedPath.length < 2) return false
     
@@ -326,11 +327,6 @@ export class PathJudge {
       
       if (cell.obstacleType === 'rock') return false
       
-      const isInCorrectPath = correctPath.some(
-        p => p.row === cell.row && p.col === cell.col
-      )
-      if (!isInCorrectPath) return false
-      
       if (i > 0) {
         const prevCell = this.selectedPath[i - 1]
         const isPortalJump = this.isPortalJump(prevCell, cell)
@@ -340,17 +336,47 @@ export class PathJudge {
       }
     }
     
-    const requiredPlants = correctPath.filter(p => {
-      const cell = this.levelMap.getCellAt(p.row, p.col)
-      return cell && cell.plant
-    })
+    this.matchedBranchId = null
+    let matchedPath = null
     
-    const litRequiredPlants = requiredPlants.filter(p => {
-      const cell = this.levelMap.getCellAt(p.row, p.col)
-      return cell && cell.isLit
-    })
+    for (const pathInfo of correctPaths) {
+      const targetPath = Array.isArray(pathInfo) ? pathInfo : pathInfo.path
+      const pathId = Array.isArray(pathInfo) ? null : pathInfo.id
+      
+      if (this.isPathMatching(targetPath)) {
+        const requiredPlants = targetPath.filter(p => {
+          const cell = this.levelMap.getCellAt(p.row, p.col)
+          return cell && cell.plant && !cell.plant.hidden
+        })
+        
+        const litRequiredPlants = requiredPlants.filter(p => {
+          const cell = this.levelMap.getCellAt(p.row, p.col)
+          return cell && cell.isLit
+        })
+        
+        if (litRequiredPlants.length >= Math.ceil(requiredPlants.length * 0.5)) {
+          this.matchedBranchId = pathId
+          matchedPath = targetPath
+          break
+        }
+      }
+    }
     
-    return litRequiredPlants.length >= Math.ceil(requiredPlants.length * 0.5)
+    return matchedPath !== null
+  }
+  
+  isPathMatching(targetPath) {
+    if (this.selectedPath.length !== targetPath.length) return false
+    
+    for (let i = 0; i < this.selectedPath.length; i++) {
+      const cell = this.selectedPath[i]
+      const target = targetPath[i]
+      if (cell.row !== target.row || cell.col !== target.col) {
+        return false
+      }
+    }
+    
+    return true
   }
 
   isPortalJump(fromCell, toCell) {
@@ -499,7 +525,10 @@ export class PathJudge {
 
   showHint() {
     const level = this.levelMap.currentLevel
-    const correctPath = level.correctPath
+    const correctPaths = level.correctPaths || [{ path: level.correctPath }]
+    
+    const randomPathInfo = correctPaths[Math.floor(Math.random() * correctPaths.length)]
+    const correctPath = Array.isArray(randomPathInfo) ? randomPathInfo : randomPathInfo.path
     
     correctPath.forEach((pos, index) => {
       this.scene.time.delayedCall(index * 200, () => {
@@ -515,6 +544,16 @@ export class PathJudge {
         }
       })
     })
+  }
+  
+  getMatchedBranchId() {
+    return this.matchedBranchId
+  }
+  
+  getAvailableBranches() {
+    const level = this.levelMap.currentLevel
+    const correctPaths = level.correctPaths || []
+    return correctPaths.map(p => Array.isArray(p) ? null : { id: p.id, name: p.name }).filter(Boolean)
   }
 
   destroy() {

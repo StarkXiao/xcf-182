@@ -27,16 +27,91 @@ export class PlantState {
     this.breathingTweens.forEach(tween => tween.stop())
     this.breathingTweens = []
     
-    const { rows, cols } = this.levelMap.currentLevel.gridSize
+    const { rows, cols } = this.levelMap.currentLevel
     
     for (let row = 0; row < rows; row++) {
       for (let col = 0; col < cols; col++) {
         const cell = this.levelMap.gridCells[row][col]
         if (cell.plant) {
-          this.createPlant(cell)
+          if (cell.plant.hidden) {
+            this.createHiddenPlant(cell)
+          } else {
+            this.createPlant(cell)
+          }
         }
       }
     }
+  }
+  
+  createHiddenPlant(cell) {
+    const pos = this.levelMap.getWorldPosition(cell.row, cell.col)
+    const plantType = this.getPlantColors(cell.plant.type)
+    const plant = this.createPlantSprite(pos.x, pos.y, cell.plant.type, plantType)
+    
+    plant.setData('cell', cell)
+    plant.setData('type', cell.plant.type)
+    plant.setData('plantType', plantType)
+    plant.setData('isLit', false)
+    plant.setData('isHidden', true)
+    plant.setData('branchId', cell.plant.branchId)
+    
+    plant.setAlpha(0)
+    plant.setScale(0.5)
+    
+    const plantSize = plantType.size * 2.5
+    plant.setInteractive(new Phaser.Geom.Rectangle(-plantSize / 2, -plantSize / 2, plantSize, plantSize), Phaser.Geom.Rectangle.Contains)
+    if (plant.input) plant.input.cursor = 'pointer'
+    
+    cell.plantSprite = plant
+    this.plants.push(plant)
+  }
+  
+  lightUpHiddenPlantsForBranch(branchId) {
+    if (!branchId) return []
+    
+    const newlyLit = []
+    this.plants.forEach(plant => {
+      if (plant.getData('isHidden') && plant.getData('branchId') === branchId && !plant.getData('isLit')) {
+        plant.setData('isLit', true)
+        const cell = plant.getData('cell')
+        cell.isLit = true
+        this.litPlants.add(plant)
+        
+        this.scene.tweens.add({
+          targets: plant,
+          alpha: 1,
+          scale: 1.25,
+          duration: 800,
+          ease: 'Back.out'
+        })
+        
+        this.scene.tweens.add({
+          targets: plant.glow,
+          alpha: { from: 0, to: 0.85 },
+          scale: { from: 0.5, to: 2.2 },
+          duration: 1000,
+          ease: 'Cubic.out'
+        })
+        
+        const pos = this.levelMap.getWorldPosition(cell.row, cell.col)
+        const plantType = plant.getData('plantType')
+        const burst = this.scene.add.particles(pos.x, pos.y, 'sparkle', {
+          speed: { min: 60, max: 180 },
+          angle: { min: 0, max: 360 },
+          scale: { start: 0.6, end: 0 },
+          alpha: { start: 1, end: 0 },
+          lifespan: 1000,
+          frequency: 60,
+          tint: plantType.glowColor,
+          quantity: 25,
+          duration: 500
+        })
+        
+        newlyLit.push(plant)
+      }
+    })
+    
+    return newlyLit
   }
 
   getPlantColors(type) {

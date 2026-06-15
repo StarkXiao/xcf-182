@@ -627,7 +627,7 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  onPathComplete(path) {
+  onPathComplete(path, branchId = null) {
     if (this.isAnimating || this.isTutorialMode) return
     
     this.isAnimating = true
@@ -642,6 +642,13 @@ export class GameScene extends Phaser.Scene {
     
     if (this.isBossLevel && this.bossLevelManager) {
       this.bossLevelManager.pause()
+    }
+    
+    if (branchId && this.plantState) {
+      const newlyLit = this.plantState.lightUpHiddenPlantsForBranch(branchId)
+      if (newlyLit.length > 0 && this.audioManager) {
+        this.audioManager.playSuccess(3)
+      }
     }
     
     const litCount = this.plantState.getLitCount()

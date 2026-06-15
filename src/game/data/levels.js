@@ -23,7 +23,56 @@ export const LEVELS = [
       { row: 3, col: 0, type: 'moss' },
       { row: 4, col: 0, type: 'flower' },
       { row: 4, col: 1, type: 'moss' },
-      { row: 4, col: 2, type: 'mushroom' }
+      { row: 4, col: 2, type: 'mushroom' },
+      { row: 1, col: 0, type: 'flower', hidden: true, branchId: 'branch_a' },
+      { row: 0, col: 4, type: 'mushroom', hidden: true, branchId: 'branch_b' }
+    ],
+    correctPaths: [
+      {
+        id: 'branch_a',
+        name: '左侧小径',
+        path: [
+          { row: 0, col: 0 },
+          { row: 1, col: 0 },
+          { row: 2, col: 0 },
+          { row: 3, col: 0 },
+          { row: 4, col: 0 },
+          { row: 4, col: 1 },
+          { row: 4, col: 2 },
+          { row: 4, col: 3 },
+          { row: 4, col: 4 }
+        ]
+      },
+      {
+        id: 'branch_b',
+        name: '右侧大道',
+        path: [
+          { row: 0, col: 0 },
+          { row: 0, col: 1 },
+          { row: 0, col: 2 },
+          { row: 0, col: 3 },
+          { row: 0, col: 4 },
+          { row: 1, col: 4 },
+          { row: 2, col: 4 },
+          { row: 3, col: 4 },
+          { row: 4, col: 4 }
+        ]
+      },
+      {
+        id: 'main',
+        name: '主路',
+        path: [
+          { row: 0, col: 0 },
+          { row: 0, col: 1 },
+          { row: 0, col: 2 },
+          { row: 1, col: 2 },
+          { row: 1, col: 3 },
+          { row: 2, col: 3 },
+          { row: 3, col: 3 },
+          { row: 3, col: 4 },
+          { row: 4, col: 4 }
+        ]
+      }
     ],
     correctPath: [
       { row: 0, col: 0 },
@@ -36,7 +85,7 @@ export const LEVELS = [
       { row: 3, col: 4 },
       { row: 4, col: 4 }
     ],
-    hint: '沿着右上方的路径前进，避开中间的障碍物',
+    hint: '沿着右上方的路径前进，避开中间的障碍物。试试不同的分支发现隐藏植物！',
     parTime3Star: 15,
     parTime2Star: 30,
     parSteps3Star: 8,
