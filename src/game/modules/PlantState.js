@@ -62,6 +62,8 @@ export class PlantState {
     plant.setInteractive(new Phaser.Geom.Rectangle(-plantSize / 2, -plantSize / 2, plantSize, plantSize), Phaser.Geom.Rectangle.Contains)
     if (plant.input) plant.input.cursor = 'pointer'
     
+    this.startBreathing(plant, plantType)
+    
     cell.plantSprite = plant
     this.plants.push(plant)
   }
@@ -134,6 +136,8 @@ export class PlantState {
     plant.setData('type', cell.plant.type)
     plant.setData('plantType', plantType)
     plant.setData('isLit', false)
+    plant.setData('isHidden', false)
+    plant.setData('branchId', null)
     
     const plantSize = plantType.size * 2.5
     plant.setInteractive(new Phaser.Geom.Rectangle(-plantSize / 2, -plantSize / 2, plantSize, plantSize), Phaser.Geom.Rectangle.Contains)
@@ -808,7 +812,26 @@ export class PlantState {
   }
 
   resetAll() {
-    this.plants.forEach(plant => this.lightOff(plant))
+    this.plants.forEach(plant => {
+      const isHidden = plant.getData('isHidden')
+      if (isHidden) {
+        plant.setData('isLit', false)
+        const cell = plant.getData('cell')
+        if (cell) {
+          cell.isLit = false
+        }
+        this.litPlants.delete(plant)
+        
+        plant.setAlpha(0)
+        plant.setScale(0.5)
+        if (plant.glow) {
+          plant.glow.setAlpha(0)
+          plant.glow.setScale(0.5)
+        }
+      } else {
+        this.lightOff(plant)
+      }
+    })
   }
 
   getLitCount() {

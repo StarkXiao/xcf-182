@@ -343,7 +343,7 @@ export class PathJudge {
       const targetPath = Array.isArray(pathInfo) ? pathInfo : pathInfo.path
       const pathId = Array.isArray(pathInfo) ? null : pathInfo.id
       
-      if (this.isPathWithinCorrectPath(targetPath)) {
+      if (this.isPathMatching(targetPath)) {
         const requiredPlants = targetPath.filter(p => {
           const cell = this.levelMap.getCellAt(p.row, p.col)
           return cell && cell.plant && !cell.plant.hidden
@@ -366,16 +366,17 @@ export class PathJudge {
     return matchedPathInfo !== null
   }
   
-  isPathWithinCorrectPath(correctPath) {
+  isPathMatching(targetPath) {
+    if (this.selectedPath.length !== targetPath.length) return false
+    
     for (let i = 0; i < this.selectedPath.length; i++) {
       const cell = this.selectedPath[i]
-      const isInCorrectPath = correctPath.some(
-        p => p.row === cell.row && p.col === cell.col
-      )
-      if (!isInCorrectPath) {
+      const target = targetPath[i]
+      if (cell.row !== target.row || cell.col !== target.col) {
         return false
       }
     }
+    
     return true
   }
 
