@@ -11,6 +11,7 @@ import { getLeaderboardService } from '../modules/LeaderboardService.js'
 import { BossLevelManager } from '../modules/BossLevelManager.js'
 import { getLevelProgressManager } from '../modules/LevelProgress.js'
 import { AudioManager } from '../modules/AudioManager.js'
+import { getAchievementManager, checkLevelAchievements } from '../modules/AchievementManager.js'
 
 export class GameScene extends Phaser.Scene {
   constructor() {
@@ -50,6 +51,7 @@ export class GameScene extends Phaser.Scene {
     this.comboScore = 0
     this.thornDamage = 0
     this.audioManager = null
+    this.achievementManager = null
   }
 
   setDailyChallengeConfig(config) {
@@ -88,6 +90,7 @@ export class GameScene extends Phaser.Scene {
   create() {
     this.leaderboardService = getLeaderboardService()
     this.levelProgressManager = getLevelProgressManager()
+    this.achievementManager = getAchievementManager()
     
     this.audioManager = AudioManager.getInstance()
     this.audioManager.init()
@@ -611,6 +614,8 @@ export class GameScene extends Phaser.Scene {
     }
     
     const litCount = this.plantState.getLitCount()
+    const totalPlants = this.plantState.getTotalCount()
+    const allLit = totalPlants > 0 && litCount >= totalPlants
     const levelScore = Math.max(0, this.comboScore + 50 - this.thornDamage)
     this.hintPanel.updateScore(levelScore)
     this.totalScore += levelScore
@@ -637,11 +642,15 @@ export class GameScene extends Phaser.Scene {
     }
     
     let canNext = true
+    let isFirstClear = false
     
     if (isNormalMode && this.levelMap.currentLevel && this.levelProgressManager) {
+      const levelId = this.levelMap.currentLevel.id
+      const prevProgress = this.levelProgressManager.getLevelProgress(levelId)
+      isFirstClear = !prevProgress.completed
+      
       canNext = this.canUnlockNextLevel(this.currentLevelIndex, stars)
       
-      const levelId = this.levelMap.currentLevel.id
       this.levelProgressManager.saveLevelResult(levelId, {
         time: completionTime,
         steps: completionSteps,
@@ -651,17 +660,30 @@ export class GameScene extends Phaser.Scene {
       })
     }
     
+    const newlyUnlockedAchievements = checkLevelAchievements({
+      isFirstClear,
+      allLit,
+      attempts: currentAttempts,
+      completionTime,
+      level: this.levelMap.currentLevel,
+      stars,
+      maxCombo: this.maxCombo,
+      isStoryComplete: false,
+      isDailyComplete: this.isDailyChallenge && this.dailyCompleted
+    })
+    
     this.submitToLeaderboard(levelScore, completionTime)
     
     this.effects.animateCreatureAlongPath(this.creature, path, () => {
       this.time.delayedCall(500, () => {
+        let showCompleteCallback
         if (this.isDailyChallenge) {
-          this.showDailyChallengeComplete(levelScore)
+          showCompleteCallback = () => this.showDailyChallengeComplete(levelScore)
         } else if (this.isStoryMode) {
-          this.handleStoryLevelComplete(levelScore)
+          showCompleteCallback = () => this.handleStoryLevelComplete(levelScore)
         } else if (this.isRandomMode) {
           const curDiff = this.levelMap.currentLevel?.difficulty || 3
-          this.hintPanel.showLevelComplete(
+          showCompleteCallback = () => this.hintPanel.showLevelComplete(
             this.currentLevelIndex,
             levelScore,
             () => this.loadRandomLevel(curDiff),
@@ -675,7 +697,7 @@ export class GameScene extends Phaser.Scene {
             this.maxCombo
           )
         } else if (this.isWorkshopMode) {
-          this.hintPanel.showLevelComplete(
+          showCompleteCallback = () => this.hintPanel.showLevelComplete(
             -1,
             levelScore,
             () => {
@@ -693,7 +715,7 @@ export class GameScene extends Phaser.Scene {
             this.maxCombo
           )
         } else {
-          this.hintPanel.showLevelComplete(
+          showCompleteCallback = () => this.hintPanel.showLevelComplete(
             this.currentLevelIndex,
             levelScore,
             () => this.nextLevel(),
@@ -706,6 +728,12 @@ export class GameScene extends Phaser.Scene {
             canNext,
             this.maxCombo
           )
+        }
+        
+        if (newlyUnlockedAchievements && newlyUnlockedAchievements.length > 0) {
+          this.showAchievementPopup(newlyUnlockedAchievements, showCompleteCallback)
+        } else {
+          showCompleteCallback()
         }
         this.isAnimating = false
       })
@@ -850,7 +878,22 @@ export class GameScene extends Phaser.Scene {
     const proceedToNext = () => {
       if (isLastLevel) {
         this.storyCompleted = true
-        this.showStoryComplete()
+        const storyAchievements = checkLevelAchievements({
+          isFirstClear: false,
+          allLit: false,
+          attempts: 0,
+          completionTime: 0,
+          level: null,
+          stars: 0,
+          maxCombo: 0,
+          isStoryComplete: true,
+          isDailyComplete: false
+        })
+        if (storyAchievements && storyAchievements.length > 0) {
+          this.showAchievementPopup(storyAchievements, () => this.showStoryComplete())
+        } else {
+          this.showStoryComplete()
+        }
       } else {
         this.hintPanel.showLevelComplete(
           this.currentLevelIndex,
@@ -873,7 +916,22 @@ export class GameScene extends Phaser.Scene {
     } else if (isLastLevel) {
       this.showDialogue(STORY_DIALOGUES.epilogue, () => {
         this.storyCompleted = true
-        this.showStoryComplete()
+        const storyAchievements = checkLevelAchievements({
+          isFirstClear: false,
+          allLit: false,
+          attempts: 0,
+          completionTime: 0,
+          level: null,
+          stars: 0,
+          maxCombo: 0,
+          isStoryComplete: true,
+          isDailyComplete: false
+        })
+        if (storyAchievements && storyAchievements.length > 0) {
+          this.showAchievementPopup(storyAchievements, () => this.showStoryComplete())
+        } else {
+          this.showStoryComplete()
+        }
       })
     } else {
       proceedToNext()
@@ -1324,6 +1382,131 @@ export class GameScene extends Phaser.Scene {
           }
         }
       )
+    }
+  }
+
+  showAchievementPopup(achievements, onClose) {
+    const width = this.game.config.width
+    const height = this.game.config.height
+    
+    const panel = this.add.container(0, 0)
+    panel.setDepth(600)
+    
+    const panelHeight = 260 + achievements.length * 70
+    
+    const bg = this.add.rectangle(
+      width / 2, height / 2,
+      width * 0.75, panelHeight,
+      0x0d1117, 0.98
+    )
+    bg.setStrokeStyle(3, 0xfbbf24, 0.9)
+    panel.add(bg)
+    
+    const title = this.add.text(width / 2, height / 2 - panelHeight / 2 + 30, '🏆 成就解锁！', {
+      fontSize: '24px',
+      fill: '#fbbf24',
+      fontStyle: 'bold'
+    })
+    title.setOrigin(0.5)
+    panel.add(title)
+    
+    const subtitle = this.add.text(width / 2, height / 2 - panelHeight / 2 + 58, '恭喜你获得了新的成就', {
+      fontSize: '13px',
+      fill: '#9ca3af'
+    })
+    subtitle.setOrigin(0.5)
+    panel.add(subtitle)
+    
+    achievements.forEach((achievement, index) => {
+      const itemY = height / 2 - panelHeight / 2 + 100 + index * 70
+      
+      const itemBg = this.add.rectangle(
+        width / 2, itemY,
+        width * 0.62, 58,
+        0x1e1b4b, 0.8
+      )
+      itemBg.setStrokeStyle(2, achievement.color, 0.7)
+      panel.add(itemBg)
+      
+      const iconText = this.add.text(width / 2 - width * 0.27, itemY, achievement.icon, {
+        fontSize: '32px'
+      })
+      iconText.setOrigin(0, 0.5)
+      panel.add(iconText)
+      
+      const nameText = this.add.text(width / 2 - width * 0.2 + 10, itemY - 10, achievement.name, {
+        fontSize: '17px',
+        fill: achievement.color,
+        fontStyle: 'bold'
+      })
+      nameText.setOrigin(0, 0.5)
+      panel.add(nameText)
+      
+      const descText = this.add.text(width / 2 - width * 0.2 + 10, itemY + 12, achievement.description, {
+        fontSize: '12px',
+        fill: '#9ca3af'
+      })
+      descText.setOrigin(0, 0.5)
+      panel.add(descText)
+    })
+    
+    const btnY = height / 2 + panelHeight / 2 - 38
+    const continueBtn = this.add.text(width / 2, btnY, '继续', {
+      fontSize: '17px',
+      fill: '#fbbf24',
+      fontStyle: 'bold',
+      backgroundColor: '#92400e',
+      padding: { x: 35, y: 12 }
+    })
+    continueBtn.setOrigin(0.5)
+    continueBtn.setInteractive({ useHandCursor: true })
+    continueBtn.on('pointerdown', () => {
+      this.tweens.add({
+        targets: panel,
+        alpha: 0,
+        scale: 0.9,
+        duration: 250,
+        ease: 'Cubic.In',
+        onComplete: () => {
+          panel.destroy()
+          if (onClose) onClose()
+        }
+      })
+    })
+    continueBtn.on('pointerover', () => continueBtn.setBackgroundColor('#b45309'))
+    continueBtn.on('pointerout', () => continueBtn.setBackgroundColor('#92400e'))
+    panel.add(continueBtn)
+    
+    panel.setAlpha(0)
+    panel.setScale(0.85)
+    this.tweens.add({
+      targets: panel,
+      alpha: 1,
+      scale: 1,
+      duration: 400,
+      ease: 'Back.out'
+    })
+    
+    if (this.audioManager) {
+      this.audioManager.playSuccess(3)
+    }
+    
+    for (let i = 0; i < 20; i++) {
+      this.time.delayedCall(i * 50, () => {
+        const x = Math.random() * width
+        const y = Math.random() * height
+        const color = [0xfbbf24, 0xf59e0b, 0xa78bfa, 0x22c55e, 0x60a5fa][Math.floor(Math.random() * 5)]
+        this.add.particles(x, y, 'sparkle', {
+          speed: { min: 50, max: 150 },
+          angle: { min: 0, max: 360 },
+          scale: { start: 0.5, end: 0 },
+          alpha: { start: 1, end: 0 },
+          lifespan: 900,
+          tint: color,
+          quantity: 8,
+          duration: 300
+        })
+      })
     }
   }
 

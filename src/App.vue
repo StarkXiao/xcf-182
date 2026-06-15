@@ -28,6 +28,10 @@
       @back="mode = 'start'"
       @selectLevel="onSelectLevel"
     />
+    <Achievements
+      v-else-if="mode === 'achievements'"
+      @back="mode = 'start'"
+    />
     <div v-else class="game-container">
       <div ref="gameContainer" id="phaser-game"></div>
       <div class="ui-layer">
@@ -106,6 +110,9 @@
               <button @click="openWorkshop" class="workshop-btn">
                 🎨 创意工坊
               </button>
+              <button @click="openAchievements" class="achievements-btn">
+                🎖️ 成就系统
+              </button>
             </div>
           </div>
         </div>
@@ -122,6 +129,7 @@ import DailyChallenge from './components/DailyChallenge.vue'
 import Leaderboard from './components/Leaderboard.vue'
 import Workshop from './components/Workshop.vue'
 import LevelSelect from './components/LevelSelect.vue'
+import Achievements from './components/Achievements.vue'
 import { generateDailyLevel, isTodayCompleted, markTodayCompleted } from './game/data/dailyChallenge.js'
 import { getWorkshopService } from './game/modules/WorkshopService.js'
 
@@ -283,6 +291,10 @@ const openLeaderboard = () => {
 
 const openWorkshop = () => {
   mode.value = 'workshop'
+}
+
+const openAchievements = () => {
+  mode.value = 'achievements'
 }
 
 const openEditorFromWorkshop = () => {
@@ -670,6 +682,39 @@ onUnmounted(() => {
   }
   to {
     box-shadow: 0 4px 25px rgba(139, 92, 246, 0.7), 0 0 40px rgba(236, 72, 153, 0.2);
+  }
+}
+
+.achievements-btn {
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 50%, #d97706 100%);
+  color: white;
+  border: none;
+  padding: 12px 40px;
+  font-size: 1rem;
+  font-weight: bold;
+  border-radius: 50px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(251, 191, 36, 0.4);
+  min-width: 240px;
+  animation: achievementsGlow 2s ease-in-out infinite alternate;
+}
+
+.achievements-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 25px rgba(251, 191, 36, 0.6);
+}
+
+.achievements-btn:active {
+  transform: translateY(0);
+}
+
+@keyframes achievementsGlow {
+  from {
+    box-shadow: 0 4px 15px rgba(251, 191, 36, 0.4);
+  }
+  to {
+    box-shadow: 0 4px 25px rgba(251, 191, 36, 0.7), 0 0 40px rgba(245, 158, 11, 0.3);
   }
 }
 
