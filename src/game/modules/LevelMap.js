@@ -273,6 +273,7 @@ export class LevelMap {
       }
       
       this.renderedElements.obstacles.push(obstacleContainer)
+      obstacleContainer.setData('obstacle', obs)
     })
     
     if (cellPattern !== 'none') {
@@ -1006,6 +1007,73 @@ export class LevelMap {
 
   getCurrentLevel() {
     return this.currentLevel
+  }
+
+  removeObstacle(row, col) {
+    const obstacles = this.currentLevel.obstacles
+    const obsIndex = obstacles.findIndex(
+      obs => obs.row === row && obs.col === col
+    )
+    
+    if (obsIndex < 0) return null
+    
+    const removedObs = obstacles.splice(obsIndex, 1)[0]
+    
+    const cell = this.gridCells[row][col]
+    if (cell) {
+      cell.isObstacle = false
+      cell.obstacleType = null
+      cell.plant = this.getPlantAt(row, col)
+    }
+    
+    const obsRendered = this.renderedElements.obstacles.find(
+      obs => obs.getData && obs.getData('obstacle')?.row === row && obs.getData('obstacle')?.col === col
+    )
+    
+    if (obsRendered) {
+      const obsIdx = this.renderedElements.obstacles.indexOf(obsRendered)
+      if (obsIdx >= 0) {
+        this.renderedElements.obstacles.splice(obsIdx, 1)
+      }
+    }
+    
+    if (cell && cell.sprite) {
+      cell.sprite.destroy()
+      cell.sprite = null
+    }
+    
+    const pos = this.getWorldPosition(row, col)
+    
+    const cellBg = this.scene.add.rectangle(
+      pos.x, pos.y,
+      this.cellSize - 4,
+      this.cellSize - 4,
+      this.theme.gridCell,
+      0.6
+    )
+    cellBg.setStrokeStyle(1, this.theme.gridCellStroke, 0.5)
+    cellBg.setData('cell', cell)
+    cellBg.setInteractive(
+      new Phaser.Geom.Rectangle(
+        -(this.cellSize - 4) / 2,
+        -(this.cellSize - 4) / 2,
+        this.cellSize - 4,
+        this.cellSize - 4
+      ),
+      Phaser.Geom.Rectangle.Contains
+    )
+    if (cellBg.input) cellBg.input.cursor = 'pointer'
+    
+    if (cell) {
+      cell.sprite = cellBg
+    }
+    this.renderedElements.cells.push(cellBg)
+    
+    return {
+      obstacle: removedObs,
+      cellSprite: cellBg,
+      worldPosition: pos
+    }
   }
 
   destroy() {

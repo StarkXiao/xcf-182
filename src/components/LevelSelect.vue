@@ -17,6 +17,39 @@
       </div>
     </div>
 
+    <div class="items-panel">
+      <div class="items-panel-header">
+        <span class="items-panel-title">🎒 背知道具</span>
+        <span class="items-panel-hint">每关可携带一个道具</span>
+      </div>
+      <div class="items-list">
+        <div
+          v-for="item in itemList"
+          :key="item.id"
+          class="item-card"
+          :class="{
+            'selected': selectedItem === item.id,
+            'disabled': item.count <= 0
+          }"
+          @click="selectItem(item.id)"
+        >
+          <div class="item-icon">{{ item.icon }}</div>
+          <div class="item-info">
+            <div class="item-name">{{ item.name }}</div>
+            <div class="item-desc">{{ item.description }}</div>
+          </div>
+          <div class="item-count">x{{ item.count }}</div>
+        </div>
+      </div>
+      <div class="selected-item-info" v-if="selectedItem">
+        <span class="selected-label">已选择：</span>
+        <span class="selected-name">{{ getItemConfig(selectedItem).icon }} {{ getItemConfig(selectedItem).name }}</span>
+        <button class="clear-selection-btn" @click="clearSelection">
+          取消选择
+        </button>
+      </div>
+    </div>
+
     <div class="levels-grid">
       <div
         v-for="(level, index) in levels"
@@ -67,18 +100,34 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { LEVELS } from '../game/data/levels.js'
 import { getLevelProgressManager } from '../game/modules/LevelProgress.js'
+import { getItemManager, ITEM_TYPES, ITEM_CONFIG } from '../game/modules/ItemManager.js'
 
 const emit = defineEmits(['back', 'selectLevel'])
 
 const levels = LEVELS
 const progressManager = getLevelProgressManager()
+const itemManager = getItemManager()
+
+const selectedItem = ref(null)
+let itemsUnsubscribe = null
 
 const totalStars = computed(() => progressManager.getTotalStars())
 const totalScore = computed(() => progressManager.getTotalScore())
 const maxStars = computed(() => levels.length * 3)
+
+const itemList = computed(() => {
+  return Object.values(ITEM_CONFIG).map(config => ({
+    ...config,
+    count: itemManager.getItemCount(config.id)
+  }))
+})
+
+function getItemConfig(itemId) {
+  return ITEM_CONFIG[itemId] || {}
+}
 
 function getProgress(levelId) {
   return progressManager.getLevelProgress(levelId)
@@ -88,9 +137,26 @@ function isUnlocked(index) {
   return progressManager.isLevelUnlocked(index)
 }
 
+function selectItem(itemId) {
+  if (itemManager.getItemCount(itemId) <= 0) return
+  
+  if (selectedItem.value === itemId) {
+    selectedItem.value = null
+    itemManager.clearSelectedItem()
+  } else {
+    selectedItem.value = itemId
+    itemManager.setSelectedItem(itemId)
+  }
+}
+
+function clearSelection() {
+  selectedItem.value = null
+  itemManager.clearSelectedItem()
+}
+
 function selectLevel(level, index) {
   if (!isUnlocked(index)) return
-  emit('selectLevel', level, index)
+  emit('selectLevel', level, index, selectedItem.value)
 }
 
 function formatTime(seconds) {
@@ -100,7 +166,20 @@ function formatTime(seconds) {
   return `${mins}:${secs.toString().padStart(2, '0')}`
 }
 
+function refreshItems() {
+}
+
 onMounted(() => {
+  selectedItem.value = itemManager.getSelectedItem()
+  itemsUnsubscribe = itemManager.onItemsChange(() => {
+    refreshItems()
+  })
+})
+
+onUnmounted(() => {
+  if (itemsUnsubscribe) {
+    itemsUnsubscribe()
+  }
 })
 </script>
 
@@ -116,6 +195,137 @@ onMounted(() => {
   overflow-y: auto;
   padding: 20px;
   box-sizing: border-box;
+}
+
+.items-panel {
+  max-width: 1200px;
+  margin: 0 auto 25px;
+  background: rgba(13, 17, 23, 0.8);
+  border-radius: 16px;
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  padding: 20px;
+}
+
+.items-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 15px;
+}
+
+.items-panel-title {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #fbbf24;
+}
+
+.items-panel-hint {
+  font-size: 0.85rem;
+  color: #64748b;
+}
+
+.items-list {
+  display: flex;
+  gap: 15px;
+  flex-wrap: wrap;
+}
+
+.item-card {
+  flex: 1;
+  min-width: 200px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(30, 41, 59, 0.6);
+  border: 2px solid rgba(251, 191, 36, 0.2);
+  border-radius: 12px;
+  padding: 15px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.item-card:hover:not(.disabled) {
+  border-color: rgba(251, 191, 36, 0.5);
+  background: rgba(30, 41, 59, 0.8);
+  transform: translateY(-2px);
+}
+
+.item-card.selected {
+  border-color: #22c55e;
+  background: rgba(22, 101, 52, 0.3);
+  box-shadow: 0 0 20px rgba(34, 197, 94, 0.3);
+}
+
+.item-card.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  filter: grayscale(0.5);
+}
+
+.item-icon {
+  font-size: 2rem;
+  flex-shrink: 0;
+}
+
+.item-info {
+  flex: 1;
+}
+
+.item-name {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #e2e8f0;
+  margin-bottom: 4px;
+}
+
+.item-desc {
+  font-size: 0.8rem;
+  color: #94a3b8;
+}
+
+.item-count {
+  font-size: 1.1rem;
+  font-weight: bold;
+  color: #fbbf24;
+  flex-shrink: 0;
+}
+
+.selected-item-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px solid rgba(251, 191, 36, 0.2);
+}
+
+.selected-label {
+  font-size: 0.9rem;
+  color: #64748b;
+}
+
+.selected-name {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #22c55e;
+}
+
+.clear-selection-btn {
+  margin-left: auto;
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  padding: 6px 14px;
+  border-radius: 16px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.clear-selection-btn:hover {
+  background: rgba(239, 68, 68, 0.3);
+  border-color: rgba(239, 68, 68, 0.5);
 }
 
 .level-select-header {
