@@ -40,18 +40,26 @@ export class LevelLoader {
     this.onBackToStart = null
     this.onDailyComplete = null
     this.onStoryComplete = null
+    this.onGameComplete = null
     this.onPathComplete = null
     this.onPathInvalid = null
     this.onHistoryChange = null
     this.onBossDamage = null
     this.onBossGameOver = null
+    this.onStartLevelTimer = null
+    this.onPauseLevelTimer = null
+    this.onResumeLevelTimer = null
+    this.onReset = null
+    this.onCreateItemButton = null
+    this.onShowItemUseNotification = null
+    this.onShowLockNotification = null
+    this.onShowLevelIntro = null
+    this.onShowDialogue = null
 
     this.levelCarriedItem = null
     this.hintUsed = false
     this.obstacleCleared = false
     this.isItemMode = false
-
-    this.onReset = null
   }
 
   setDailyChallengeConfig(config) {
@@ -121,9 +129,7 @@ export class LevelLoader {
 
     this.effects.createLevelTransition(() => {
       this.scene.children.removeAll()
-
       this.effects.init()
-
       const level = this.levelMap.loadRandomLevel(difficulty, seed)
       this._setupLevelAfterLoad(level)
     })
@@ -143,17 +149,12 @@ export class LevelLoader {
 
     this.effects.createLevelTransition(() => {
       this.scene.children.removeAll()
-
       this.effects.init()
-
       const level = this.levelMap.loadWorkshopLevel()
       if (!level) {
-        if (this.onBackToStart) {
-          this.onBackToStart()
-        }
+        if (this.onBackToStart) this.onBackToStart()
         return
       }
-
       this._setupLevelAfterLoad(level, -1)
     })
   }
@@ -163,7 +164,9 @@ export class LevelLoader {
 
     if (isNormalMode && this.levelProgressManager) {
       if (!this.levelProgressManager.isLevelUnlocked(levelIndex)) {
-        this.showLockNotification(levelIndex)
+        if (this.onShowLockNotification) {
+          this.onShowLockNotification(levelIndex)
+        }
         const fallbackIndex = Math.max(0, this.levelProgressManager.getHighestUnlockedIndex())
         if (fallbackIndex !== levelIndex) {
           this.scene.time.delayedCall(500, () => {
@@ -186,84 +189,13 @@ export class LevelLoader {
 
     this.effects.createLevelTransition(() => {
       this.scene.children.removeAll()
-
       this.effects.init()
-
       const level = this.levelMap.loadLevel(levelIndex)
       if (!level) {
-        if (this.onGameComplete) {
-          this.onGameComplete()
-        }
+        if (this.onGameComplete) this.onGameComplete()
         return
       }
-
       this._setupLevelAfterLoad(level, levelIndex)
-    })
-  }
-
-  showLockNotification(levelIndex) {
-    const width = this.scene.game.config.width
-    const height = this.scene.game.config.height
-
-    const levelNum = levelIndex + 1
-    const prevLevelNum = levelIndex
-    let lockMsg = `🔒 第 ${levelNum} 关未解锁`
-    let hintMsg = `完成第 ${prevLevelNum} 关并获得至少1星后解锁`
-
-    const notify = this.scene.add.container(0, 0)
-    notify.setDepth(500)
-
-    const bg = this.scene.add.rectangle(
-      width / 2, height / 2,
-      width * 0.7, 160,
-      0x0d1117, 0.95
-    )
-    bg.setStrokeStyle(3, 0xef4444, 0.9)
-    notify.add(bg)
-
-    const icon = this.scene.text(width / 2, height / 2 - 40, '🔒', {
-      fontSize: '36px'
-    })
-    icon.setOrigin(0.5)
-    notify.add(icon)
-
-    const title = this.scene.text(width / 2, height / 2 + 5, lockMsg, {
-      fontSize: '20px',
-      fill: '#ef4444',
-      fontStyle: 'bold'
-    })
-    title.setOrigin(0.5)
-    notify.add(title)
-
-    const hint = this.scene.text(width / 2, height / 2 + 38, hintMsg, {
-      fontSize: '14px',
-      fill: '#9ca3af',
-      align: 'center'
-    })
-    hint.setOrigin(0.5)
-    notify.add(hint)
-
-    notify.setAlpha(0)
-    notify.setScale(0.8)
-
-    this.scene.tweens.add({
-      targets: notify,
-      alpha: 1,
-      scale: 1,
-      duration: 300,
-      ease: 'Back.out'
-    })
-
-    this.scene.tweens.add({
-      targets: notify,
-      alpha: 0,
-      scale: 0.9,
-      duration: 300,
-      ease: 'Cubic.In',
-      delay: 2200,
-      onComplete: () => {
-        notify.destroy()
-      }
     })
   }
 
@@ -282,21 +214,10 @@ export class LevelLoader {
     this.hintPanel.reset()
     this.hintPanel.updateSteps(0)
 
-    if (this.isDailyChallenge) {
-      this.hintPanel.setDailyChallengeMode(true)
-    }
-
-    if (this.isStoryMode) {
-      this.hintPanel.setStoryMode(true)
-    }
-
-    if (this.isRandomMode) {
-      this.hintPanel.setRandomMode(true, level)
-    }
-
-    if (this.isWorkshopMode) {
-      this.hintPanel.setWorkshopMode(true, level)
-    }
+    if (this.isDailyChallenge) this.hintPanel.setDailyChallengeMode(true)
+    if (this.isStoryMode) this.hintPanel.setStoryMode(true)
+    if (this.isRandomMode) this.hintPanel.setRandomMode(true, level)
+    if (this.isWorkshopMode) this.hintPanel.setWorkshopMode(true, level)
 
     this.hintPanel.onReset = () => {
       if (this.onReset) {
@@ -306,15 +227,9 @@ export class LevelLoader {
       }
     }
     this.hintPanel.onShowHint = () => {
-      if (this.pathJudge) {
-        this.pathJudge.showHint()
-      }
+      if (this.pathJudge) this.pathJudge.showHint()
     }
-
-    this.hintPanel.onNextRandom = (diff) => {
-      this.loadRandomLevel(diff)
-    }
-
+    this.hintPanel.onNextRandom = (diff) => this.loadRandomLevel(diff)
     this.hintPanel.onUndo = () => this.handleUndo()
     this.hintPanel.onRedo = () => this.handleRedo()
 
@@ -380,9 +295,7 @@ export class LevelLoader {
       }
     }
 
-    if (this.onStartLevelTimer) {
-      this.onStartLevelTimer()
-    }
+    if (this.onStartLevelTimer) this.onStartLevelTimer()
 
     const shouldShowTutorial = levelIndex === 0 &&
       !this.isDailyChallenge &&
@@ -392,31 +305,29 @@ export class LevelLoader {
     if (shouldShowTutorial) {
       this.isTutorialMode = true
       if (this.onPauseLevelTimer) this.onPauseLevelTimer()
-
-      this.showLevelIntro(level)
-
-      this.scene.time.delayedCall(2500, () => {
-        this.startTutorial()
-      })
+      if (this.onShowLevelIntro) this.onShowLevelIntro(level)
+      this.scene.time.delayedCall(2500, () => this.startTutorial())
     } else if (this.isStoryMode && levelIndex >= 0) {
       const beforeDialogue = getDialogueForLevel(levelIndex, true)
       if (beforeDialogue) {
-        this.showDialogue(beforeDialogue, () => {
-          this.showLevelIntro(level)
-          this.isAnimating = false
-        })
+        if (this.onShowDialogue) {
+          this.onShowDialogue(beforeDialogue, () => {
+            if (this.onShowLevelIntro) this.onShowLevelIntro(level)
+            this.isAnimating = false
+          })
+        }
       } else {
-        this.showLevelIntro(level)
+        if (this.onShowLevelIntro) this.onShowLevelIntro(level)
         this.isAnimating = false
       }
     } else if (this.isBossLevel && this.bossLevelManager) {
       this.isAnimating = true
-      this.showLevelIntro(level)
+      if (this.onShowLevelIntro) this.onShowLevelIntro(level)
       this.bossLevelManager.showBossIntro(() => {
         this.isAnimating = false
       })
     } else {
-      this.showLevelIntro(level)
+      if (this.onShowLevelIntro) this.onShowLevelIntro(level)
       this.isAnimating = false
     }
 
@@ -440,100 +351,6 @@ export class LevelLoader {
       this.isTutorialMode = false
       this.isAnimating = false
       if (this.onResumeLevelTimer) this.onResumeLevelTimer()
-    })
-  }
-
-  showDialogue(dialogues, onComplete) {
-    this.scene.scene.pause()
-    this.scene.scene.launch('DialogueScene', {
-      dialogues: dialogues,
-      onComplete: onComplete
-    })
-  }
-
-  showLevelIntro(level) {
-    const width = this.scene.game.config.width
-    const height = this.scene.game.config.height
-
-    const levelLabel = this.isStoryMode ? `第 ${level.id} 章` : ''
-    const titleText = this.isDailyChallenge
-      ? `${level.name} 🔥`
-      : this.isStoryMode
-        ? `${levelLabel} · ${level.name}`
-        : this.isBossLevel
-          ? `👹 BOSS · ${level.name}`
-          : level.name
-    const titleFill = this.isDailyChallenge
-      ? '#fbbf24'
-      : this.isStoryMode
-        ? '#a78bfa'
-        : this.isBossLevel
-          ? '#ef4444'
-          : '#60a5fa'
-
-    const intro = this.scene.text(width / 2, height / 2 - 100, titleText, {
-      fontSize: '32px',
-      fill: titleFill,
-      fontStyle: 'bold'
-    })
-    intro.setOrigin(0.5)
-    intro.setDepth(200)
-    intro.setAlpha(0)
-
-    const desc = this.scene.text(width / 2, height / 2 - 50, level.description, {
-      fontSize: '16px',
-      fill: '#e2e8f0',
-      align: 'center'
-    })
-    desc.setOrigin(0.5)
-    desc.setDepth(200)
-    desc.setAlpha(0)
-
-    let challengeLabel = '从起点拖动到终点，点亮沿途的植物'
-    if (this.isDailyChallenge) {
-      challengeLabel = '🔥 每日挑战 · 完成后不可重玩'
-    } else if (this.isStoryMode) {
-      challengeLabel = '📖 故事模式 · 点亮植物，推动剧情发展'
-    } else if (this.isBossLevel) {
-      challengeLabel = '👹 BOSS 关 · 小心移动障碍物，三次机会通关'
-    }
-
-    const instructionFill = this.isDailyChallenge
-      ? '#fbbf24'
-      : this.isStoryMode
-        ? '#a78bfa'
-        : this.isBossLevel
-          ? '#ef4444'
-          : '#9ca3af'
-
-    const instruction = this.scene.text(width / 2, height / 2, challengeLabel, {
-      fontSize: '14px',
-      fill: instructionFill
-    })
-    instruction.setOrigin(0.5)
-    instruction.setDepth(200)
-    instruction.setAlpha(0)
-
-    this.scene.tweens.add({
-      targets: [intro, desc, instruction],
-      alpha: { from: 0, to: 1 },
-      duration: 500,
-      ease: 'Cubic.out',
-      onComplete: () => {
-        this.scene.time.delayedCall(2000, () => {
-          this.scene.tweens.add({
-            targets: [intro, desc, instruction],
-            alpha: 0,
-            duration: 300,
-            ease: 'Cubic.in',
-            onComplete: () => {
-              intro.destroy()
-              desc.destroy()
-              instruction.destroy()
-            }
-          })
-        })
-      }
     })
   }
 
@@ -591,7 +408,9 @@ export class LevelLoader {
 
     if (isNormalMode && this.levelProgressManager && nextIndex < LEVELS.length) {
       if (!this.levelProgressManager.isLevelUnlocked(nextIndex)) {
-        this.showLockNotification(nextIndex)
+        if (this.onShowLockNotification) {
+          this.onShowLockNotification(nextIndex)
+        }
         return
       }
     }

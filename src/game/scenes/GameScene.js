@@ -9,6 +9,8 @@ import { AudioManager } from '../modules/AudioManager.js'
 import { LevelLoader } from '../modules/LevelLoader.js'
 import { ScoreManager } from '../modules/ScoreManager.js'
 import { GameStateManager } from '../modules/GameStateManager.js'
+import { PopupManager } from '../modules/PopupManager.js'
+import { ItemSystem } from '../modules/ItemSystem.js'
 
 export class GameScene extends Phaser.Scene {
   constructor() {
@@ -21,6 +23,8 @@ export class GameScene extends Phaser.Scene {
     this.hintPanel = null
     this.bossLevelManager = null
     this.audioManager = null
+    this.popupManager = null
+    this.itemSystem = null
     this.levelLoader = null
     this.scoreManager = null
     this.gameStateManager = null
@@ -61,8 +65,8 @@ export class GameScene extends Phaser.Scene {
     this.plantState = new PlantState(this, this.levelMap)
     this.pathJudge = new PathJudge(this, this.levelMap, this.plantState)
     this.hintPanel = new HintPanel(this)
-
     this.bossLevelManager = new BossLevelManager(this, this.levelMap)
+    this.popupManager = new PopupManager(this)
 
     this.effects.setLevelMap(this.levelMap)
 
@@ -72,7 +76,7 @@ export class GameScene extends Phaser.Scene {
       }
     })
 
-    const dependencies = {
+    const baseDependencies = {
       levelMap: this.levelMap,
       plantState: this.plantState,
       pathJudge: this.pathJudge,
@@ -81,24 +85,27 @@ export class GameScene extends Phaser.Scene {
       bossLevelManager: this.bossLevelManager
     }
 
-    this.scoreManager = new ScoreManager(this, dependencies)
+    this.scoreManager = new ScoreManager(this, baseDependencies)
 
-    this.levelLoader = new LevelLoader(this, {
-      ...dependencies,
-      itemManager: null
+    this.levelLoader = new LevelLoader(this, baseDependencies)
+
+    this.itemSystem = new ItemSystem(this, {
+      levelMap: this.levelMap,
+      levelLoader: this.levelLoader
     })
 
     this.gameStateManager = new GameStateManager(this, {
-      ...dependencies,
+      ...baseDependencies,
       levelLoader: this.levelLoader,
-      scoreManager: this.scoreManager
+      scoreManager: this.scoreManager,
+      popupManager: this.popupManager,
+      itemSystem: this.itemSystem
     })
 
     if (this._dailyConfig) {
       this.levelLoader.setDailyChallengeConfig(this._dailyConfig)
       this.scoreManager.setModeConfig({ isDailyChallenge: true, dailyLevel: this._dailyConfig.dailyLevel })
       this.gameStateManager.setModeConfig({
-        isDailyChallenge: true,
         onDailyComplete: this._dailyConfig.onDailyComplete,
         onBackToStart: this._dailyConfig.onBackToStart
       })
@@ -108,7 +115,6 @@ export class GameScene extends Phaser.Scene {
       this.levelLoader.setStoryModeConfig(this._storyConfig)
       this.scoreManager.setModeConfig({ isStoryMode: true })
       this.gameStateManager.setModeConfig({
-        isStoryMode: true,
         onStoryComplete: this._storyConfig.onStoryComplete,
         onBackToStart: this._storyConfig.onBackToStart
       })
@@ -118,7 +124,6 @@ export class GameScene extends Phaser.Scene {
       this.levelLoader.setRandomModeConfig(this._randomConfig)
       this.scoreManager.setModeConfig({ isRandomMode: true })
       this.gameStateManager.setModeConfig({
-        isRandomMode: true,
         onBackToStart: this._randomConfig.onBackToStart
       })
     }
@@ -127,11 +132,16 @@ export class GameScene extends Phaser.Scene {
       this.levelLoader.setWorkshopConfig(this._workshopConfig)
       this.scoreManager.setModeConfig({ isWorkshopMode: true })
       this.gameStateManager.setModeConfig({
-        isWorkshopMode: true,
         onBackToStart: this._workshopConfig.onBackToStart
       })
     }
 
+    this._connectCallbacks()
+
+    this.levelLoader.init()
+  }
+
+  _connectCallbacks() {
     this.levelLoader.onPathComplete = (path, branchId) => {
       this.gameStateManager.onPathComplete(path, branchId)
     }
@@ -160,23 +170,48 @@ export class GameScene extends Phaser.Scene {
       this.gameStateManager.showGameComplete()
     }
     this.levelLoader.onStoryComplete = () => {
-      this.gameStateManager.showStoryComplete()
     }
     this.levelLoader.onCreateItemButton = () => {
-      this.gameStateManager.createItemButton()
+      this.itemSystem.createItemButton()
     }
     this.levelLoader.onShowItemUseNotification = (title, message) => {
-      this.gameStateManager.showItemUseNotification(title, message)
+      this.popupManager.showItemUseNotification(title, message)
+    }
+    this.levelLoader.onShowLockNotification = (levelIndex) => {
+      this.popupManager.showLockNotification(levelIndex)
+    }
+    this.levelLoader.onShowLevelIntro = (level) => {
+      this.popupManager.showLevelIntro(level, {
+        isDailyChallenge: this.levelLoader.isDailyChallenge,
+        isStoryMode: this.levelLoader.isStoryMode,
+        isBossLevel: this.levelLoader.isBossLevel
+      })
+    }
+    this.levelLoader.onShowDialogue = (dialogues, onComplete) => {
+      this.scene.pause()
+      this.scene.launch('DialogueScene', {
+        dialogues: dialogues,
+        onComplete: onComplete
+      })
     }
     this.levelLoader.onLevelLoaded = (level, levelIndex) => {
       this.scoreManager.resetForNewLevel(levelIndex)
     }
-
     this.levelLoader.onReset = () => {
       this.resetLevel()
     }
+  }
 
-    this.levelLoader.init()
+  updatePlantCombo(plantType) {
+    if (this.scoreManager) {
+      return this.scoreManager.updatePlantCombo(plantType)
+    }
+  }
+
+  applyThornDamage() {
+    if (this.scoreManager) {
+      this.scoreManager.applyThornDamage()
+    }
   }
 
   get currentLevelIndex() {
@@ -239,18 +274,6 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  updatePlantCombo(plantType) {
-    if (this.scoreManager) {
-      return this.scoreManager.updatePlantCombo(plantType)
-    }
-  }
-
-  applyThornDamage() {
-    if (this.scoreManager) {
-      this.scoreManager.applyThornDamage()
-    }
-  }
-
   resetLevel() {
     if (this.levelLoader) {
       this.levelLoader.resetLevel()
@@ -286,5 +309,7 @@ export class GameScene extends Phaser.Scene {
     if (this.levelLoader) this.levelLoader.destroy()
     if (this.scoreManager) this.scoreManager.destroy()
     if (this.gameStateManager) this.gameStateManager.destroy()
+    if (this.popupManager) this.popupManager.destroy()
+    if (this.itemSystem) this.itemSystem.destroy()
   }
 }
