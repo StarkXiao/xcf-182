@@ -7,9 +7,9 @@ export const LEVELS = [
     start: { row: 0, col: 0 },
     end: { row: 4, col: 4 },
     obstacles: [
-      { row: 1, col: 1 },
-      { row: 2, col: 2 },
-      { row: 3, col: 1 }
+      { row: 1, col: 1, type: 'rock' },
+      { row: 2, col: 2, type: 'rock' },
+      { row: 3, col: 1, type: 'rock' }
     ],
     plants: [
       { row: 0, col: 1, type: 'moss' },
@@ -60,9 +60,9 @@ export const LEVELS = [
       { row: 3, col: 3, type: 'rock' },
       { row: 4, col: 1, type: 'rock' },
       { row: 4, col: 4, type: 'rock' },
-      { row: 0, col: 2, type: 'thorn' },
-      { row: 2, col: 4, type: 'ice' },
-      { row: 1, col: 3, type: 'portal', targetRow: 3, targetCol: 5, color: 0x8b5cf6 }
+      { row: 2, col: 1, type: 'thorn' },
+      { row: 3, col: 4, type: 'ice' },
+      { row: 4, col: 2, type: 'portal', targetRow: 3, targetCol: 5, color: 0x8b5cf6 }
     ],
     plants: [
       { row: 0, col: 1, type: 'moss' },
@@ -112,11 +112,13 @@ export const LEVELS = [
     start: { row: 0, col: 3 },
     end: { row: 6, col: 3 },
     obstacles: [
-      { row: 1, col: 1 }, { row: 1, col: 2 }, { row: 1, col: 4 }, { row: 1, col: 5 },
-      { row: 2, col: 1 }, { row: 2, col: 5 },
-      { row: 3, col: 1 }, { row: 3, col: 3 }, { row: 3, col: 5 },
-      { row: 4, col: 1 }, { row: 4, col: 5 },
-      { row: 5, col: 1 }, { row: 5, col: 2 }, { row: 5, col: 4 }, { row: 5, col: 5 }
+      { row: 1, col: 1, type: 'rock' }, { row: 1, col: 2, type: 'rock' }, { row: 1, col: 4, type: 'rock' }, { row: 1, col: 5, type: 'rock' },
+      { row: 2, col: 1, type: 'rock' }, { row: 2, col: 5, type: 'rock' },
+      { row: 3, col: 1, type: 'rock' }, { row: 3, col: 3, type: 'rock' }, { row: 3, col: 5, type: 'rock' },
+      { row: 4, col: 1, type: 'rock' }, { row: 4, col: 5, type: 'rock' },
+      { row: 5, col: 1, type: 'rock' }, { row: 5, col: 2, type: 'rock' }, { row: 5, col: 4, type: 'rock' }, { row: 5, col: 5, type: 'rock' },
+      { row: 2, col: 3, type: 'thorn' },
+      { row: 4, col: 3, type: 'thorn' }
     ],
     plants: [
       { row: 0, col: 2, type: 'moss' },
@@ -170,13 +172,16 @@ export const LEVELS = [
     start: { row: 0, col: 0 },
     end: { row: 6, col: 6 },
     obstacles: [
-      { row: 0, col: 2 }, { row: 0, col: 4 },
-      { row: 1, col: 1 }, { row: 1, col: 5 },
-      { row: 2, col: 3 },
-      { row: 3, col: 0 }, { row: 3, col: 2 }, { row: 3, col: 4 }, { row: 3, col: 6 },
-      { row: 4, col: 3 },
-      { row: 5, col: 1 }, { row: 5, col: 5 },
-      { row: 6, col: 2 }, { row: 6, col: 4 }
+      { row: 0, col: 2, type: 'rock' }, { row: 0, col: 4, type: 'rock' },
+      { row: 1, col: 1, type: 'rock' }, { row: 1, col: 5, type: 'rock' },
+      { row: 2, col: 3, type: 'rock' },
+      { row: 3, col: 0, type: 'rock' }, { row: 3, col: 2, type: 'rock' }, { row: 3, col: 4, type: 'rock' }, { row: 3, col: 6, type: 'rock' },
+      { row: 4, col: 3, type: 'rock' },
+      { row: 5, col: 1, type: 'rock' }, { row: 5, col: 5, type: 'rock' },
+      { row: 6, col: 2, type: 'rock' }, { row: 6, col: 4, type: 'rock' },
+      { row: 2, col: 4, type: 'ice' },
+      { row: 4, col: 5, type: 'ice' },
+      { row: 5, col: 4, type: 'ice' }
     ],
     plants: [
       { row: 0, col: 1, type: 'moss' },
@@ -234,13 +239,16 @@ export const LEVELS = [
     start: { row: 0, col: 0 },
     end: { row: 7, col: 7 },
     obstacles: [
-      { row: 1, col: 2 }, { row: 1, col: 3 },
-      { row: 2, col: 5 },
-      { row: 3, col: 0 }, { row: 3, col: 1 }, { row: 3, col: 3 },
-      { row: 4, col: 4 }, { row: 4, col: 6 },
-      { row: 5, col: 2 }, { row: 5, col: 5 },
-      { row: 6, col: 0 }, { row: 6, col: 3 }, { row: 6, col: 7 },
-      { row: 7, col: 4 }
+      { row: 1, col: 2, type: 'rock' }, { row: 1, col: 3, type: 'rock' },
+      { row: 2, col: 5, type: 'rock' },
+      { row: 3, col: 0, type: 'rock' }, { row: 3, col: 1, type: 'rock' }, { row: 3, col: 3, type: 'rock' },
+      { row: 4, col: 4, type: 'rock' }, { row: 4, col: 6, type: 'rock' },
+      { row: 5, col: 2, type: 'rock' }, { row: 5, col: 5, type: 'rock' },
+      { row: 6, col: 0, type: 'rock' }, { row: 6, col: 3, type: 'rock' }, { row: 6, col: 7, type: 'rock' },
+      { row: 7, col: 4, type: 'rock' },
+      { row: 2, col: 4, type: 'thorn' },
+      { row: 3, col: 5, type: 'thorn' },
+      { row: 5, col: 6, type: 'thorn' }
     ],
     plants: [
       { row: 0, col: 1, type: 'moss' },
@@ -308,14 +316,16 @@ export const LEVELS = [
     start: { row: 0, col: 3 },
     end: { row: 7, col: 4 },
     obstacles: [
-      { row: 0, col: 0 }, { row: 0, col: 7 },
-      { row: 1, col: 2 }, { row: 1, col: 5 },
-      { row: 2, col: 0 }, { row: 2, col: 3 }, { row: 2, col: 4 }, { row: 2, col: 7 },
-      { row: 3, col: 1 }, { row: 3, col: 6 },
-      { row: 4, col: 2 }, { row: 4, col: 3 }, { row: 4, col: 4 }, { row: 4, col: 5 },
-      { row: 5, col: 0 }, { row: 5, col: 7 },
-      { row: 6, col: 2 }, { row: 6, col: 5 },
-      { row: 7, col: 0 }, { row: 7, col: 7 }
+      { row: 0, col: 0, type: 'rock' }, { row: 0, col: 7, type: 'rock' },
+      { row: 1, col: 2, type: 'rock' }, { row: 1, col: 5, type: 'rock' },
+      { row: 2, col: 0, type: 'rock' }, { row: 2, col: 3, type: 'rock' }, { row: 2, col: 4, type: 'rock' }, { row: 2, col: 7, type: 'rock' },
+      { row: 3, col: 1, type: 'rock' }, { row: 3, col: 6, type: 'rock' },
+      { row: 4, col: 2, type: 'rock' }, { row: 4, col: 3, type: 'rock' }, { row: 4, col: 4, type: 'rock' }, { row: 4, col: 5, type: 'rock' },
+      { row: 5, col: 0, type: 'rock' }, { row: 5, col: 7, type: 'rock' },
+      { row: 6, col: 2, type: 'rock' }, { row: 6, col: 5, type: 'rock' },
+      { row: 7, col: 0, type: 'rock' }, { row: 7, col: 7, type: 'rock' },
+      { row: 2, col: 2, type: 'portal', targetRow: 5, targetCol: 5, color: 0x8b5cf6 },
+      { row: 3, col: 5, type: 'portal', targetRow: 6, targetCol: 3, color: 0x06b6d4 }
     ],
     plants: [
       { row: 0, col: 2, type: 'moss' },
@@ -382,13 +392,18 @@ export const LEVELS = [
     start: { row: 0, col: 4 },
     end: { row: 8, col: 4 },
     obstacles: [
-      { row: 1, col: 1 }, { row: 1, col: 7 },
-      { row: 2, col: 3 }, { row: 2, col: 5 },
-      { row: 3, col: 0 }, { row: 3, col: 2 }, { row: 3, col: 4 }, { row: 3, col: 6 }, { row: 3, col: 8 },
-      { row: 4, col: 1 }, { row: 4, col: 7 },
-      { row: 5, col: 0 }, { row: 5, col: 2 }, { row: 5, col: 4 }, { row: 5, col: 6 }, { row: 5, col: 8 },
-      { row: 6, col: 3 }, { row: 6, col: 5 },
-      { row: 7, col: 1 }, { row: 7, col: 7 }
+      { row: 1, col: 1, type: 'rock' }, { row: 1, col: 7, type: 'rock' },
+      { row: 2, col: 3, type: 'rock' }, { row: 2, col: 5, type: 'rock' },
+      { row: 3, col: 0, type: 'rock' }, { row: 3, col: 2, type: 'rock' }, { row: 3, col: 4, type: 'rock' }, { row: 3, col: 6, type: 'rock' }, { row: 3, col: 8, type: 'rock' },
+      { row: 4, col: 1, type: 'rock' }, { row: 4, col: 7, type: 'rock' },
+      { row: 5, col: 0, type: 'rock' }, { row: 5, col: 2, type: 'rock' }, { row: 5, col: 4, type: 'rock' }, { row: 5, col: 6, type: 'rock' }, { row: 5, col: 8, type: 'rock' },
+      { row: 6, col: 3, type: 'rock' }, { row: 6, col: 5, type: 'rock' },
+      { row: 7, col: 1, type: 'rock' }, { row: 7, col: 7, type: 'rock' },
+      { row: 2, col: 2, type: 'thorn' },
+      { row: 4, col: 4, type: 'thorn' },
+      { row: 6, col: 6, type: 'thorn' },
+      { row: 4, col: 2, type: 'ice' },
+      { row: 4, col: 6, type: 'ice' }
     ],
     plants: [
       { row: 0, col: 3, type: 'moss' },
@@ -458,15 +473,19 @@ export const LEVELS = [
     start: { row: 0, col: 0 },
     end: { row: 8, col: 8 },
     obstacles: [
-      { row: 0, col: 3 }, { row: 0, col: 6 },
-      { row: 1, col: 1 }, { row: 1, col: 4 }, { row: 1, col: 7 },
-      { row: 2, col: 5 },
-      { row: 3, col: 2 }, { row: 3, col: 8 },
-      { row: 4, col: 0 }, { row: 4, col: 4 },
-      { row: 5, col: 3 }, { row: 5, col: 6 },
-      { row: 6, col: 1 }, { row: 6, col: 7 },
-      { row: 7, col: 4 }, { row: 7, col: 5 },
-      { row: 8, col: 2 }
+      { row: 0, col: 3, type: 'rock' }, { row: 0, col: 6, type: 'rock' },
+      { row: 1, col: 1, type: 'rock' }, { row: 1, col: 4, type: 'rock' }, { row: 1, col: 7, type: 'rock' },
+      { row: 2, col: 5, type: 'rock' },
+      { row: 3, col: 2, type: 'rock' }, { row: 3, col: 8, type: 'rock' },
+      { row: 4, col: 0, type: 'rock' }, { row: 4, col: 4, type: 'rock' },
+      { row: 5, col: 3, type: 'rock' }, { row: 5, col: 6, type: 'rock' },
+      { row: 6, col: 1, type: 'rock' }, { row: 6, col: 7, type: 'rock' },
+      { row: 7, col: 4, type: 'rock' }, { row: 7, col: 5, type: 'rock' },
+      { row: 8, col: 2, type: 'rock' },
+      { row: 2, col: 4, type: 'ice' },
+      { row: 5, col: 5, type: 'ice' },
+      { row: 1, col: 3, type: 'portal', targetRow: 6, targetCol: 6, color: 0x8b5cf6 },
+      { row: 4, col: 6, type: 'portal', targetRow: 7, targetCol: 7, color: 0x06b6d4 }
     ],
     plants: [
       { row: 0, col: 1, type: 'moss' },
@@ -569,16 +588,23 @@ export const LEVELS = [
     start: { row: 0, col: 0 },
     end: { row: 9, col: 9 },
     obstacles: [
-      { row: 0, col: 2 }, { row: 0, col: 5 }, { row: 0, col: 8 },
-      { row: 1, col: 4 },
-      { row: 2, col: 1 }, { row: 2, col: 6 },
-      { row: 3, col: 3 }, { row: 3, col: 7 },
-      { row: 4, col: 0 }, { row: 4, col: 4 }, { row: 4, col: 9 },
-      { row: 5, col: 2 }, { row: 5, col: 5 }, { row: 5, col: 8 },
-      { row: 6, col: 1 }, { row: 6, col: 6 },
-      { row: 7, col: 3 }, { row: 7, col: 7 },
-      { row: 8, col: 0 }, { row: 8, col: 4 },
-      { row: 9, col: 2 }, { row: 9, col: 5 }, { row: 9, col: 8 }
+      { row: 0, col: 2, type: 'rock' }, { row: 0, col: 5, type: 'rock' }, { row: 0, col: 8, type: 'rock' },
+      { row: 1, col: 4, type: 'rock' },
+      { row: 2, col: 1, type: 'rock' }, { row: 2, col: 6, type: 'rock' },
+      { row: 3, col: 3, type: 'rock' }, { row: 3, col: 7, type: 'rock' },
+      { row: 4, col: 0, type: 'rock' }, { row: 4, col: 4, type: 'rock' }, { row: 4, col: 9, type: 'rock' },
+      { row: 5, col: 2, type: 'rock' }, { row: 5, col: 5, type: 'rock' }, { row: 5, col: 8, type: 'rock' },
+      { row: 6, col: 1, type: 'rock' }, { row: 6, col: 6, type: 'rock' },
+      { row: 7, col: 3, type: 'rock' }, { row: 7, col: 7, type: 'rock' },
+      { row: 8, col: 0, type: 'rock' }, { row: 8, col: 4, type: 'rock' },
+      { row: 9, col: 2, type: 'rock' }, { row: 9, col: 5, type: 'rock' }, { row: 9, col: 8, type: 'rock' },
+      { row: 2, col: 4, type: 'thorn' },
+      { row: 5, col: 7, type: 'thorn' },
+      { row: 8, col: 6, type: 'thorn' },
+      { row: 3, col: 5, type: 'ice' },
+      { row: 6, col: 4, type: 'ice' },
+      { row: 1, col: 3, type: 'portal', targetRow: 7, targetCol: 8, color: 0x8b5cf6 },
+      { row: 4, col: 6, type: 'portal', targetRow: 8, targetCol: 8, color: 0x06b6d4 }
     ],
     plants: [
       { row: 0, col: 1, type: 'moss' },
@@ -695,16 +721,24 @@ export const LEVELS = [
     start: { row: 0, col: 5 },
     end: { row: 9, col: 5 },
     obstacles: [
-      { row: 0, col: 2 }, { row: 0, col: 8 },
-      { row: 1, col: 0 }, { row: 1, col: 4 }, { row: 1, col: 6 }, { row: 1, col: 9 },
-      { row: 2, col: 2 }, { row: 2, col: 7 },
-      { row: 3, col: 0 }, { row: 3, col: 3 }, { row: 3, col: 5 }, { row: 3, col: 7 }, { row: 3, col: 9 },
-      { row: 4, col: 1 }, { row: 4, col: 8 },
-      { row: 5, col: 0 }, { row: 5, col: 2 }, { row: 5, col: 4 }, { row: 5, col: 6 }, { row: 5, col: 8 }, { row: 5, col: 9 },
-      { row: 6, col: 1 }, { row: 6, col: 7 },
-      { row: 7, col: 0 }, { row: 7, col: 3 }, { row: 7, col: 5 }, { row: 7, col: 7 }, { row: 7, col: 9 },
-      { row: 8, col: 2 }, { row: 8, col: 6 },
-      { row: 9, col: 0 }, { row: 9, col: 4 }, { row: 9, col: 6 }, { row: 9, col: 9 }
+      { row: 0, col: 2, type: 'rock' }, { row: 0, col: 8, type: 'rock' },
+      { row: 1, col: 0, type: 'rock' }, { row: 1, col: 4, type: 'rock' }, { row: 1, col: 6, type: 'rock' }, { row: 1, col: 9, type: 'rock' },
+      { row: 2, col: 2, type: 'rock' }, { row: 2, col: 7, type: 'rock' },
+      { row: 3, col: 0, type: 'rock' }, { row: 3, col: 3, type: 'rock' }, { row: 3, col: 5, type: 'rock' }, { row: 3, col: 7, type: 'rock' }, { row: 3, col: 9, type: 'rock' },
+      { row: 4, col: 1, type: 'rock' }, { row: 4, col: 8, type: 'rock' },
+      { row: 5, col: 0, type: 'rock' }, { row: 5, col: 2, type: 'rock' }, { row: 5, col: 4, type: 'rock' }, { row: 5, col: 6, type: 'rock' }, { row: 5, col: 8, type: 'rock' }, { row: 5, col: 9, type: 'rock' },
+      { row: 6, col: 1, type: 'rock' }, { row: 6, col: 7, type: 'rock' },
+      { row: 7, col: 0, type: 'rock' }, { row: 7, col: 3, type: 'rock' }, { row: 7, col: 5, type: 'rock' }, { row: 7, col: 7, type: 'rock' }, { row: 7, col: 9, type: 'rock' },
+      { row: 8, col: 2, type: 'rock' }, { row: 8, col: 6, type: 'rock' },
+      { row: 9, col: 0, type: 'rock' }, { row: 9, col: 4, type: 'rock' }, { row: 9, col: 6, type: 'rock' }, { row: 9, col: 9, type: 'rock' },
+      { row: 2, col: 5, type: 'thorn' },
+      { row: 4, col: 4, type: 'thorn' },
+      { row: 6, col: 4, type: 'thorn' },
+      { row: 8, col: 5, type: 'thorn' },
+      { row: 3, col: 4, type: 'ice' },
+      { row: 6, col: 6, type: 'ice' },
+      { row: 2, col: 4, type: 'portal', targetRow: 6, targetCol: 6, color: 0x8b5cf6 },
+      { row: 4, col: 5, type: 'portal', targetRow: 8, targetCol: 5, color: 0x06b6d4 }
     ],
     plants: [
       { row: 0, col: 4, type: 'moss' },
