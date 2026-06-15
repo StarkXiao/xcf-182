@@ -52,14 +52,17 @@ export const LEVELS = [
     start: { row: 0, col: 0 },
     end: { row: 5, col: 5 },
     obstacles: [
-      { row: 0, col: 3 },
-      { row: 1, col: 1 },
-      { row: 1, col: 4 },
-      { row: 2, col: 2 },
-      { row: 3, col: 0 },
-      { row: 3, col: 3 },
-      { row: 4, col: 1 },
-      { row: 4, col: 4 }
+      { row: 0, col: 3, type: 'rock' },
+      { row: 1, col: 1, type: 'rock' },
+      { row: 1, col: 4, type: 'rock' },
+      { row: 2, col: 2, type: 'rock' },
+      { row: 3, col: 0, type: 'rock' },
+      { row: 3, col: 3, type: 'rock' },
+      { row: 4, col: 1, type: 'rock' },
+      { row: 4, col: 4, type: 'rock' },
+      { row: 0, col: 2, type: 'thorn' },
+      { row: 2, col: 4, type: 'ice' },
+      { row: 1, col: 3, type: 'portal', targetRow: 3, targetCol: 5, color: 0x8b5cf6 }
     ],
     plants: [
       { row: 0, col: 1, type: 'moss' },

@@ -47,6 +47,7 @@ export class GameScene extends Phaser.Scene {
     this.maxCombo = 0
     this.lastPlantType = null
     this.comboScore = 0
+    this.thornDamage = 0
   }
 
   setDailyChallengeConfig(config) {
@@ -307,6 +308,7 @@ export class GameScene extends Phaser.Scene {
     this.maxCombo = 0
     this.lastPlantType = null
     this.comboScore = 0
+    this.thornDamage = 0
     if (this.hintPanel) {
       this.hintPanel.updateCombo(0, 0)
     }
@@ -567,6 +569,14 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  applyThornDamage() {
+    const damage = 20
+    this.thornDamage += damage
+    if (this.hintPanel) {
+      this.hintPanel.showThornDamage(damage)
+    }
+  }
+
   onPathComplete(path) {
     if (this.isAnimating || this.isTutorialMode) return
     
@@ -585,7 +595,7 @@ export class GameScene extends Phaser.Scene {
     }
     
     const litCount = this.plantState.getLitCount()
-    const levelScore = this.comboScore + 50
+    const levelScore = Math.max(0, this.comboScore + 50 - this.thornDamage)
     this.hintPanel.updateScore(levelScore)
     this.totalScore += levelScore
     
@@ -1059,6 +1069,7 @@ export class GameScene extends Phaser.Scene {
     this.maxCombo = 0
     this.lastPlantType = null
     this.comboScore = 0
+    this.thornDamage = 0
     if (this.hintPanel) {
       this.hintPanel.updateSteps(0)
       this.hintPanel.updateCombo(0, 0)

@@ -100,10 +100,12 @@ export class LevelMap {
     for (let row = 0; row < rows; row++) {
       this.gridCells[row] = []
       for (let col = 0; col < cols; col++) {
+        const obstacleType = this.getObstacleType(row, col)
         this.gridCells[row][col] = {
           row,
           col,
           isObstacle: this.isObstacle(row, col),
+          obstacleType: obstacleType,
           isStart: this.isStart(row, col),
           isEnd: this.isEnd(row, col),
           plant: this.getPlantAt(row, col),
@@ -173,7 +175,7 @@ export class LevelMap {
     for (let row = 0; row < rows; row++) {
       for (let col = 0; col < cols; col++) {
         const cell = this.gridCells[row][col]
-        if (cell.isObstacle) continue
+        if (cell.obstacleType === 'rock') continue
         
         const x = this.offsetX + col * this.cellSize + this.cellSize / 2
         const y = this.offsetY + row * this.cellSize + this.cellSize / 2
@@ -209,51 +211,68 @@ export class LevelMap {
     obstacles.forEach(obs => {
       const x = this.offsetX + obs.col * this.cellSize + this.cellSize / 2
       const y = this.offsetY + obs.row * this.cellSize + this.cellSize / 2
+      const type = obs.type || 'rock'
       
       let obstacleContainer
-      switch (obstacleStyle) {
-        case 'ice_pillar':
-          obstacleContainer = this.createIcePillarObstacle(x, y)
+      switch (type) {
+        case 'thorn':
+          obstacleContainer = this.createThornObstacle(x, y)
           break
-        case 'lava_rock':
-          obstacleContainer = this.createLavaRockObstacle(x, y)
+        case 'ice':
+          obstacleContainer = this.createIceObstacle(x, y)
           break
-        case 'crystal_cluster':
-          obstacleContainer = this.createCrystalClusterObstacle(x, y)
+        case 'portal':
+          obstacleContainer = this.createPortalObstacle(x, y, obs.color || 0x8b5cf6)
           break
         case 'rock':
         default:
-          obstacleContainer = this.createRockObstacle(x, y)
+          switch (obstacleStyle) {
+            case 'ice_pillar':
+              obstacleContainer = this.createIcePillarObstacle(x, y)
+              break
+            case 'lava_rock':
+              obstacleContainer = this.createLavaRockObstacle(x, y)
+              break
+            case 'crystal_cluster':
+              obstacleContainer = this.createCrystalClusterObstacle(x, y)
+              break
+            case 'rock':
+            default:
+              obstacleContainer = this.createRockObstacle(x, y)
+          }
       }
       
-      this.scene.tweens.add({
-        targets: obstacleContainer,
-        scale: { from: 0.95, to: 1.05 },
-        duration: 2000,
-        yoyo: true,
-        repeat: -1,
-        ease: 'Sine.easeInOut',
-        delay: Math.random() * 1000
-      })
-      
-      const sparkles = this.scene.add.particles(x, y, 'sparkle', {
-        speed: 10,
-        angle: { min: 0, max: 360 },
-        scale: { start: 0.3, end: 0 },
-        alpha: { start: 0.5, end: 0 },
-        lifespan: 1000,
-        frequency: 500,
-        tint: this.theme.obstacleSpark
-      })
-      sparkles.stop()
-      this.scene.time.addEvent({
-        delay: Math.random() * 3000,
-        callback: () => sparkles.start(),
-        loop: false
-      })
+      if (type === 'rock') {
+        this.scene.tweens.add({
+          targets: obstacleContainer,
+          scale: { from: 0.95, to: 1.05 },
+          duration: 2000,
+          yoyo: true,
+          repeat: -1,
+          ease: 'Sine.easeInOut',
+          delay: Math.random() * 1000
+        })
+        
+        const sparkles = this.scene.add.particles(x, y, 'sparkle', {
+          speed: 10,
+          angle: { min: 0, max: 360 },
+          scale: { start: 0.3, end: 0 },
+          alpha: { start: 0.5, end: 0 },
+          lifespan: 1000,
+          frequency: 500,
+          tint: this.theme.obstacleSpark
+        })
+        sparkles.stop()
+        this.scene.time.addEvent({
+          delay: Math.random() * 3000,
+          callback: () => sparkles.start(),
+          loop: false
+        })
+        
+        this.renderedElements.obstacleParticles.push(sparkles)
+      }
       
       this.renderedElements.obstacles.push(obstacleContainer)
-      this.renderedElements.obstacleParticles.push(sparkles)
     })
     
     if (cellPattern !== 'none') {
@@ -284,6 +303,183 @@ export class LevelMap {
         }
       }
     }
+  }
+
+  createThornObstacle(x, y) {
+    const container = this.scene.add.container(x, y)
+    const size = this.cellSize * 0.4
+    
+    const base = this.scene.add.circle(0, 0, size * 0.8, 0x1a1f2e, 0.5)
+    base.setStrokeStyle(2, 0x374151, 0.6)
+    container.add(base)
+    
+    const thornCount = 8
+    for (let i = 0; i < thornCount; i++) {
+      const angle = (i / thornCount) * Math.PI * 2
+      const thorn = this.scene.add.graphics()
+      thorn.fillStyle(0x22c55e, 0.85)
+      thorn.lineStyle(1.5, 0x166534, 0.9)
+      thorn.beginPath()
+      thorn.moveTo(0, -size)
+      thorn.lineTo(size * 0.25, -size * 0.3)
+      thorn.lineTo(-size * 0.25, -size * 0.3)
+      thorn.closePath()
+      thorn.fillPath()
+      thorn.strokePath()
+      thorn.setPosition(Math.cos(angle) * size * 0.5, Math.sin(angle) * size * 0.5)
+      thorn.rotation = angle + Math.PI / 2
+      container.add(thorn)
+    }
+    
+    const center = this.scene.add.circle(0, 0, size * 0.35, 0x166534, 0.9)
+    center.setStrokeStyle(2, 0x22c55e, 0.8)
+    container.add(center)
+    
+    const warning = this.scene.add.text(0, 0, '!', {
+      fontSize: `${size * 0.6}px`,
+      fill: '#ef4444',
+      fontStyle: 'bold'
+    })
+    warning.setOrigin(0.5)
+    container.add(warning)
+    
+    this.scene.tweens.add({
+      targets: container,
+      scale: { from: 0.95, to: 1.05 },
+      duration: 1500,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut'
+    })
+    
+    return container
+  }
+
+  createIceObstacle(x, y) {
+    const container = this.scene.add.container(x, y)
+    const size = this.cellSize * 0.42
+    
+    const iceBase = this.scene.add.circle(0, 0, size * 0.9, 0x60a5fa, 0.35)
+    iceBase.setStrokeStyle(3, 0x93c5fd, 0.7)
+    container.add(iceBase)
+    
+    const shine = this.scene.add.graphics()
+    shine.fillStyle(0xffffff, 0.5)
+    shine.beginPath()
+    shine.moveTo(-size * 0.4, -size * 0.3)
+    shine.lineTo(size * 0.1, -size * 0.5)
+    shine.lineTo(size * 0.3, -size * 0.1)
+    shine.lineTo(-size * 0.2, size * 0.1)
+    shine.closePath()
+    shine.fillPath()
+    container.add(shine)
+    
+    const iceCrystal = this.scene.add.graphics()
+    iceCrystal.lineStyle(2, 0xbfdbfe, 0.7)
+    for (let i = 0; i < 6; i++) {
+      const angle = (i / 6) * Math.PI * 2
+      iceCrystal.beginPath()
+      iceCrystal.moveTo(0, 0)
+      iceCrystal.lineTo(Math.cos(angle) * size * 0.6, Math.sin(angle) * size * 0.6)
+      iceCrystal.strokePath()
+      
+      const midX = Math.cos(angle) * size * 0.35
+      const midY = Math.sin(angle) * size * 0.35
+      const branchAngle = angle + Math.PI / 3
+      iceCrystal.beginPath()
+      iceCrystal.moveTo(midX, midY)
+      iceCrystal.lineTo(midX + Math.cos(branchAngle) * size * 0.2, midY + Math.sin(branchAngle) * size * 0.2)
+      iceCrystal.strokePath()
+      
+      const branchAngle2 = angle - Math.PI / 3
+      iceCrystal.beginPath()
+      iceCrystal.moveTo(midX, midY)
+      iceCrystal.lineTo(midX + Math.cos(branchAngle2) * size * 0.2, midY + Math.sin(branchAngle2) * size * 0.2)
+      iceCrystal.strokePath()
+    }
+    container.add(iceCrystal)
+    
+    const arrow = this.scene.add.text(0, 0, '→', {
+      fontSize: `${size * 0.5}px`,
+      fill: '#3b82f6',
+      fontStyle: 'bold'
+    })
+    arrow.setOrigin(0.5)
+    container.add(arrow)
+    
+    this.scene.tweens.add({
+      targets: iceBase,
+      scale: { from: 0.9, to: 1.1 },
+      alpha: { from: 0.3, to: 0.5 },
+      duration: 2000,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut'
+    })
+    
+    return container
+  }
+
+  createPortalObstacle(x, y, color = 0x8b5cf6) {
+    const container = this.scene.add.container(x, y)
+    const size = this.cellSize * 0.4
+    
+    const outerRing = this.scene.add.graphics()
+    outerRing.lineStyle(4, color, 0.7)
+    outerRing.beginPath()
+    outerRing.arc(0, 0, size * 0.9, 0, Math.PI * 2)
+    outerRing.strokePath()
+    container.add(outerRing)
+    
+    const innerGlow = this.scene.add.circle(0, 0, size * 0.7, color, 0.3)
+    container.add(innerGlow)
+    
+    const swirl = this.scene.add.graphics()
+    swirl.lineStyle(2, 0xffffff, 0.6)
+    for (let i = 0; i < 3; i++) {
+      swirl.beginPath()
+      const startAngle = (i / 3) * Math.PI * 2
+      for (let t = 0; t < Math.PI * 1.5; t += 0.1) {
+        const r = size * 0.6 * (1 - t / (Math.PI * 2))
+        const angle = startAngle + t * 2
+        const px = Math.cos(angle) * r
+        const py = Math.sin(angle) * r
+        if (t === 0) swirl.moveTo(px, py)
+        else swirl.lineTo(px, py)
+      }
+      swirl.strokePath()
+    }
+    container.add(swirl)
+    
+    const center = this.scene.add.circle(0, 0, size * 0.25, 0xffffff, 0.8)
+    container.add(center)
+    
+    const portalIcon = this.scene.add.text(0, 0, '⟲', {
+      fontSize: `${size * 0.7}px`,
+      fill: '#ffffff'
+    })
+    portalIcon.setOrigin(0.5)
+    container.add(portalIcon)
+    
+    this.scene.tweens.add({
+      targets: [outerRing, swirl],
+      rotation: Math.PI * 2,
+      duration: 3000,
+      repeat: -1,
+      ease: 'Linear'
+    })
+    
+    this.scene.tweens.add({
+      targets: innerGlow,
+      scale: { from: 0.8, to: 1.2 },
+      alpha: { from: 0.2, to: 0.4 },
+      duration: 1500,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut'
+    })
+    
+    return container
   }
 
   createRockObstacle(x, y) {
@@ -742,6 +938,23 @@ export class LevelMap {
       duration: 500,
       ease: 'Back.out'
     })
+  }
+
+  getObstacleAt(row, col) {
+    return this.currentLevel.obstacles.find(
+      obs => obs.row === row && obs.col === col
+    )
+  }
+
+  getObstacleType(row, col) {
+    const obs = this.getObstacleAt(row, col)
+    return obs ? (obs.type || 'rock') : null
+  }
+
+  isBlockingObstacle(row, col) {
+    const type = this.getObstacleType(row, col)
+    if (!type) return false
+    return type === 'rock'
   }
 
   isObstacle(row, col) {

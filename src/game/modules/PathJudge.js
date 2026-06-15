@@ -178,7 +178,7 @@ export class PathJudge {
   onPointerDown(pointer) {
     const cell = this.levelMap.getCellAtPosition(pointer.x, pointer.y)
     
-    if (!cell || cell.isObstacle) return
+    if (!cell || cell.obstacleType === 'rock') return
     
     if (cell.isStart || (this.selectedPath.length === 0 && this.isValidStart(cell))) {
       this._saveHistorySnapshot()
@@ -195,7 +195,7 @@ export class PathJudge {
     
     const cell = this.levelMap.getCellAtPosition(pointer.x, pointer.y)
     
-    if (!cell || cell.isObstacle) return
+    if (!cell || cell.obstacleType === 'rock') return
     
     const lastCell = this.selectedPath[this.selectedPath.length - 1]
     
@@ -223,17 +223,57 @@ export class PathJudge {
     
     if (this.levelMap.areAdjacent(lastCell, cell)) {
       this._saveHistorySnapshot()
-      cell.isOnPath = true
-      this.selectedPath.push(cell)
-      this.updatePathDisplay()
-      this.highlightCell(cell, 0x3b82f6)
+      this.addCellToPath(cell)
       
-      if (cell.plant && cell.plantSprite) {
-        const lit = this.plantState.lightUp(cell.plantSprite)
-        if (lit && this.scene.updatePlantCombo) {
-          this.scene.updatePlantCombo(cell.plant.type)
-        }
+      if (cell.obstacleType === 'ice') {
+        this.handleIceSlide(cell, lastCell)
+      } else if (cell.obstacleType === 'portal') {
+        this.handlePortalTeleport(cell)
       }
+    }
+  }
+
+  addCellToPath(cell) {
+    cell.isOnPath = true
+    this.selectedPath.push(cell)
+    this.updatePathDisplay()
+    this.highlightCell(cell, 0x3b82f6)
+    
+    if (cell.obstacleType === 'thorn') {
+      if (this.scene.applyThornDamage) {
+        this.scene.applyThornDamage()
+      }
+    }
+    
+    if (cell.plant && cell.plantSprite) {
+      const lit = this.plantState.lightUp(cell.plantSprite)
+      if (lit && this.scene.updatePlantCombo) {
+        this.scene.updatePlantCombo(cell.plant.type)
+      }
+    }
+  }
+
+  handleIceSlide(iceCell, fromCell) {
+    const rowDiff = iceCell.row - fromCell.row
+    const colDiff = iceCell.col - fromCell.col
+    
+    let nextRow = iceCell.row + rowDiff
+    let nextCol = iceCell.col + colDiff
+    
+    const nextCell = this.levelMap.getCellAt(nextRow, nextCol)
+    
+    if (nextCell && nextCell.obstacleType !== 'rock' && !this.selectedPath.includes(nextCell)) {
+      this.addCellToPath(nextCell)
+    }
+  }
+
+  handlePortalTeleport(portalCell) {
+    const obs = this.levelMap.getObstacleAt(portalCell.row, portalCell.col)
+    if (!obs || obs.targetRow === undefined || obs.targetCol === undefined) return
+    
+    const targetCell = this.levelMap.getCellAt(obs.targetRow, obs.targetCol)
+    if (targetCell && targetCell.obstacleType !== 'rock' && !this.selectedPath.includes(targetCell)) {
+      this.addCellToPath(targetCell)
     }
   }
 
@@ -284,7 +324,7 @@ export class PathJudge {
     for (let i = 0; i < this.selectedPath.length; i++) {
       const cell = this.selectedPath[i]
       
-      if (cell.isObstacle) return false
+      if (cell.obstacleType === 'rock') return false
       
       const isInCorrectPath = correctPath.some(
         p => p.row === cell.row && p.col === cell.col
@@ -293,7 +333,10 @@ export class PathJudge {
       
       if (i > 0) {
         const prevCell = this.selectedPath[i - 1]
-        if (!this.levelMap.areAdjacent(prevCell, cell)) return false
+        const isPortalJump = this.isPortalJump(prevCell, cell)
+        if (!this.levelMap.areAdjacent(prevCell, cell) && !isPortalJump) {
+          return false
+        }
       }
     }
     
@@ -308,6 +351,13 @@ export class PathJudge {
     })
     
     return litRequiredPlants.length >= Math.ceil(requiredPlants.length * 0.5)
+  }
+
+  isPortalJump(fromCell, toCell) {
+    if (fromCell.obstacleType !== 'portal') return false
+    const obs = this.levelMap.getObstacleAt(fromCell.row, fromCell.col)
+    if (!obs || obs.targetRow === undefined || obs.targetCol === undefined) return false
+    return obs.targetRow === toCell.row && obs.targetCol === toCell.col
   }
 
   updatePathDisplay() {

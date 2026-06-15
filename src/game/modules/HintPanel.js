@@ -783,6 +783,30 @@ export class HintPanel {
     }
   }
 
+  showThornDamage(damage) {
+    const width = this.scene.game.config.width
+    
+    const damageText = this.scene.add.text(width / 2, 120, `-${damage} 分`, {
+      fontSize: '24px',
+      fill: '#ef4444',
+      fontStyle: 'bold'
+    })
+    damageText.setOrigin(0.5)
+    damageText.setDepth(200)
+    
+    this.scene.tweens.add({
+      targets: damageText,
+      y: 80,
+      alpha: { from: 1, to: 0 },
+      scale: { from: 1, to: 1.5 },
+      duration: 800,
+      ease: 'Cubic.out',
+      onComplete: () => {
+        damageText.destroy()
+      }
+    })
+  }
+
   incrementAttempts() {
     this.attempts++
     if (this.attemptsText) {
