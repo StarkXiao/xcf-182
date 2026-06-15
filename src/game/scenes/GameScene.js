@@ -1281,7 +1281,11 @@ export class GameScene extends Phaser.Scene {
     this.itemManager.useItem(this.levelCarriedItem)
     this.hintUsed = true
     
-    const correctPath = this.levelMap.currentLevel.correctPath
+    const level = this.levelMap.currentLevel
+    const correctPaths = level.correctPaths || [{ path: level.correctPath }]
+    const randomPathInfo = correctPaths[Math.floor(Math.random() * correctPaths.length)]
+    const correctPath = Array.isArray(randomPathInfo) ? randomPathInfo : randomPathInfo.path
+    
     if (!correctPath || correctPath.length === 0) return
     
     const midIndex = Math.floor(correctPath.length / 2)

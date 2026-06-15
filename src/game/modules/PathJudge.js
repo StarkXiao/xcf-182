@@ -86,7 +86,7 @@ export class PathJudge {
         this.selectedPath.push(cell)
         this.highlightCell(cell, 0x3b82f6)
         
-        if (cell.plant && cell.plantSprite) {
+        if (cell.plant && cell.plantSprite && !cell.plant.hidden) {
           const lit = this.plantState.lightUp(cell.plantSprite)
           if (lit && this.scene.updatePlantCombo) {
             this.scene.updatePlantCombo(cell.plant.type)
@@ -246,7 +246,7 @@ export class PathJudge {
       }
     }
     
-    if (cell.plant && cell.plantSprite) {
+    if (cell.plant && cell.plantSprite && !cell.plant.hidden) {
       const lit = this.plantState.lightUp(cell.plantSprite)
       if (lit && this.scene.updatePlantCombo) {
         this.scene.updatePlantCombo(cell.plant.type)
@@ -313,7 +313,7 @@ export class PathJudge {
 
   validatePath() {
     const level = this.levelMap.currentLevel
-    const correctPaths = level.correctPaths || [level.correctPath]
+    const correctPaths = level.correctPaths || [{ path: level.correctPath }]
     
     if (this.selectedPath.length < 2) return false
     
@@ -337,13 +337,13 @@ export class PathJudge {
     }
     
     this.matchedBranchId = null
-    let matchedPath = null
+    let matchedPathInfo = null
     
     for (const pathInfo of correctPaths) {
       const targetPath = Array.isArray(pathInfo) ? pathInfo : pathInfo.path
       const pathId = Array.isArray(pathInfo) ? null : pathInfo.id
       
-      if (this.isPathMatching(targetPath)) {
+      if (this.isPathWithinCorrectPath(targetPath)) {
         const requiredPlants = targetPath.filter(p => {
           const cell = this.levelMap.getCellAt(p.row, p.col)
           return cell && cell.plant && !cell.plant.hidden
@@ -354,28 +354,28 @@ export class PathJudge {
           return cell && cell.isLit
         })
         
-        if (litRequiredPlants.length >= Math.ceil(requiredPlants.length * 0.5)) {
+        if (requiredPlants.length === 0 || 
+            litRequiredPlants.length >= Math.ceil(requiredPlants.length * 0.5)) {
           this.matchedBranchId = pathId
-          matchedPath = targetPath
+          matchedPathInfo = pathInfo
           break
         }
       }
     }
     
-    return matchedPath !== null
+    return matchedPathInfo !== null
   }
   
-  isPathMatching(targetPath) {
-    if (this.selectedPath.length !== targetPath.length) return false
-    
+  isPathWithinCorrectPath(correctPath) {
     for (let i = 0; i < this.selectedPath.length; i++) {
       const cell = this.selectedPath[i]
-      const target = targetPath[i]
-      if (cell.row !== target.row || cell.col !== target.col) {
+      const isInCorrectPath = correctPath.some(
+        p => p.row === cell.row && p.col === cell.col
+      )
+      if (!isInCorrectPath) {
         return false
       }
     }
-    
     return true
   }
 

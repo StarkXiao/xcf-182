@@ -767,20 +767,40 @@ export class PlantState {
     cell.isLit = false
     this.litPlants.delete(plant)
     
-    this.scene.tweens.add({
-      targets: plant,
-      scale: 1,
-      duration: 320,
-      ease: 'Cubic.out'
-    })
+    const isHidden = plant.getData('isHidden')
     
-    this.scene.tweens.add({
-      targets: plant.glow,
-      alpha: 0.3,
-      scale: 1,
-      duration: 320,
-      ease: 'Cubic.out'
-    })
+    if (isHidden) {
+      this.scene.tweens.add({
+        targets: plant,
+        alpha: 0,
+        scale: 0.5,
+        duration: 320,
+        ease: 'Cubic.out'
+      })
+      
+      this.scene.tweens.add({
+        targets: plant.glow,
+        alpha: 0,
+        scale: 0.5,
+        duration: 320,
+        ease: 'Cubic.out'
+      })
+    } else {
+      this.scene.tweens.add({
+        targets: plant,
+        scale: 1,
+        duration: 320,
+        ease: 'Cubic.out'
+      })
+      
+      this.scene.tweens.add({
+        targets: plant.glow,
+        alpha: 0.3,
+        scale: 1,
+        duration: 320,
+        ease: 'Cubic.out'
+      })
+    }
   }
 
   lightAll() {
