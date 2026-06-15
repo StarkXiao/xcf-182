@@ -37,6 +37,7 @@ export class LevelProgressManager {
       bestTime: null,
       bestSteps: null,
       bestAttempts: null,
+      bestScore: 0,
       stars: 0,
       firstCompletedAt: null
     }
@@ -50,6 +51,7 @@ export class LevelProgressManager {
       bestTime: existing.bestTime === null ? result.time : Math.min(existing.bestTime, result.time),
       bestSteps: existing.bestSteps === null ? result.steps : Math.min(existing.bestSteps, result.steps),
       bestAttempts: existing.bestAttempts === null ? result.attempts : Math.min(existing.bestAttempts, result.attempts),
+      bestScore: Math.max(existing.bestScore, result.score || 0),
       stars: Math.max(existing.stars, result.stars),
       firstCompletedAt: existing.firstCompletedAt || Date.now()
     }
@@ -88,6 +90,14 @@ export class LevelProgressManager {
     let total = 0
     for (const key of Object.keys(this.progress)) {
       total += this.progress[key].stars || 0
+    }
+    return total
+  }
+
+  getTotalScore() {
+    let total = 0
+    for (const key of Object.keys(this.progress)) {
+      total += this.progress[key].bestScore || 0
     }
     return total
   }

@@ -623,6 +623,7 @@ export class GameScene extends Phaser.Scene {
         time: completionTime,
         steps: completionSteps,
         attempts: currentAttempts,
+        score: levelScore,
         stars: stars
       })
     }
@@ -818,6 +819,7 @@ export class GameScene extends Phaser.Scene {
         time: completionTime,
         steps: completionSteps,
         attempts: currentAttempts,
+        score: levelScore,
         stars: stars
       })
     }

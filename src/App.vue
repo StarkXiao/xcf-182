@@ -23,6 +23,11 @@
       :upload-success="uploadSuccessFlag"
       :play-level-id="workshopPlayedLevelId"
     />
+    <LevelSelect
+      v-else-if="mode === 'levelSelect'"
+      @back="mode = 'start'"
+      @selectLevel="onSelectLevel"
+    />
     <div v-else class="game-container">
       <div ref="gameContainer" id="phaser-game"></div>
       <div class="ui-layer">
@@ -62,6 +67,9 @@
             <div class="button-group">
               <button @click="startStoryMode" class="story-btn">
                 📖 故事模式
+              </button>
+              <button @click="openLevelSelect" class="level-select-btn">
+                📜 关卡选择
               </button>
               <button @click="startGame" class="start-btn">
                 🚀 自由冒险
@@ -113,6 +121,7 @@ import LevelEditor from './components/LevelEditor.vue'
 import DailyChallenge from './components/DailyChallenge.vue'
 import Leaderboard from './components/Leaderboard.vue'
 import Workshop from './components/Workshop.vue'
+import LevelSelect from './components/LevelSelect.vue'
 import { generateDailyLevel, isTodayCompleted, markTodayCompleted } from './game/data/dailyChallenge.js'
 import { getWorkshopService } from './game/modules/WorkshopService.js'
 
@@ -244,6 +253,28 @@ const startVersusMode = () => {
 
 const openEditor = () => {
   mode.value = 'editor'
+}
+
+const openLevelSelect = () => {
+  mode.value = 'levelSelect'
+}
+
+const onSelectLevel = (level, index) => {
+  showStartScreen.value = false
+  mode.value = 'game'
+  
+  setTimeout(() => {
+    if (gameContainer.value) {
+      gameInstance = new Game(gameContainer.value, {
+        isDailyChallenge: false,
+        isStoryMode: false,
+        startLevelIndex: index,
+        onBackToStart: () => {
+          backToStart()
+        }
+      })
+    }
+  }, 100)
 }
 
 const openLeaderboard = () => {
@@ -439,6 +470,29 @@ onUnmounted(() => {
   gap: 12px;
   margin-top: 20px;
   align-items: center;
+}
+
+.level-select-btn {
+  background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+  color: white;
+  border: none;
+  padding: 15px 50px;
+  font-size: 1.2rem;
+  font-weight: bold;
+  border-radius: 50px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(6, 182, 212, 0.4);
+  min-width: 240px;
+}
+
+.level-select-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 25px rgba(6, 182, 212, 0.6);
+}
+
+.level-select-btn:active {
+  transform: translateY(0);
 }
 
 .start-btn {

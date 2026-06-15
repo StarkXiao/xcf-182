@@ -62,6 +62,10 @@ export class Game {
         })
       }
       
+      if (this.options.startLevelIndex !== undefined) {
+        gameScene.currentLevelIndex = this.options.startLevelIndex
+      }
+      
       scenes.push(gameScene, dialogueScene)
     }
     
