@@ -58,6 +58,7 @@ export class GameScene extends Phaser.Scene {
     this.isItemMode = false
     this.hintUsed = false
     this.obstacleCleared = false
+    this.levelCarriedItem = null
   }
 
   setDailyChallengeConfig(config) {
@@ -389,7 +390,25 @@ export class GameScene extends Phaser.Scene {
     this.hintUsed = false
     this.obstacleCleared = false
     this.isItemMode = false
+    
+    const selectedItem = this.itemManager.getSelectedItem()
+    if (selectedItem && this.itemManager.getItemCount(selectedItem) > 0) {
+      this.levelCarriedItem = selectedItem
+    } else {
+      this.levelCarriedItem = null
+    }
+    
     this.createItemButton()
+    
+    if (this.levelCarriedItem) {
+      const itemConfig = ITEM_CONFIG[this.levelCarriedItem]
+      this.time.delayedCall(800, () => {
+        this.showItemUseNotification(
+          '本关携带道具', 
+          `${itemConfig.icon} ${itemConfig.name} - ${itemConfig.description}`
+        )
+      })
+    }
     
     const startPos = this.levelMap.getWorldPosition(level.start.row, level.start.col)
     this.creature = this.effects.createCreatureSprite(startPos.x, startPos.y)
@@ -1164,11 +1183,14 @@ export class GameScene extends Phaser.Scene {
     const height = this.game.config.height
     
     if (this.itemButton) {
-      this.itemButton.destroy()
+      if (this.itemButton.bg) this.itemButton.bg.destroy()
+      if (this.itemButton.icon) this.itemButton.icon.destroy()
+      if (this.itemButton.name) this.itemButton.name.destroy()
+      if (this.itemButton.count) this.itemButton.count.destroy()
       this.itemButton = null
     }
     
-    const selectedItem = this.itemManager.getSelectedItem()
+    const selectedItem = this.levelCarriedItem
     if (!selectedItem) return
     
     const itemConfig = ITEM_CONFIG[selectedItem]
@@ -1234,8 +1256,8 @@ export class GameScene extends Phaser.Scene {
   activateItemMode() {
     if (this.isAnimating || this.isTutorialMode) return
     
-    const selectedItem = this.itemManager.getSelectedItem()
-    if (!selectedItem || !this.itemManager.canUseSelectedItem()) return
+    const selectedItem = this.levelCarriedItem
+    if (!selectedItem || this.itemManager.getItemCount(selectedItem) <= 0) return
     
     if (selectedItem === ITEM_TYPES.PATH_HINT) {
       this.usePathHintItem()
@@ -1246,8 +1268,10 @@ export class GameScene extends Phaser.Scene {
 
   usePathHintItem() {
     if (this.hintUsed) return
-    if (!this.itemManager.useSelectedItem()) return
+    if (this.levelCarriedItem !== ITEM_TYPES.PATH_HINT) return
+    if (this.itemManager.getItemCount(this.levelCarriedItem) <= 0) return
     
+    this.itemManager.useItem(this.levelCarriedItem)
     this.hintUsed = true
     
     const correctPath = this.levelMap.currentLevel.correctPath
@@ -1308,6 +1332,8 @@ export class GameScene extends Phaser.Scene {
 
   activateObstacleClearMode() {
     if (this.obstacleCleared) return
+    if (this.levelCarriedItem !== ITEM_TYPES.OBSTACLE_CLEAR) return
+    if (this.itemManager.getItemCount(this.levelCarriedItem) <= 0) return
     
     this.isItemMode = true
     
@@ -1323,7 +1349,9 @@ export class GameScene extends Phaser.Scene {
   handleObstacleClearClick(pointer) {
     const cell = this.levelMap.getCellAtPosition(pointer.x, pointer.y)
     
-    if (!cell || !cell.isObstacle || cell.obstacleType !== 'rock') {
+    const clearableTypes = ['rock', 'thorn', 'ice']
+    
+    if (!cell || !cell.isObstacle || !clearableTypes.includes(cell.obstacleType)) {
       this.isItemMode = false
       if (this.itemButton && this.itemButton.bg) {
         this.itemButton.bg.setFillStyle(0x1e3a5f, 0.95)
@@ -1336,8 +1364,10 @@ export class GameScene extends Phaser.Scene {
 
   clearObstacle(cell) {
     if (this.obstacleCleared) return
-    if (!this.itemManager.useSelectedItem()) return
+    if (this.levelCarriedItem !== ITEM_TYPES.OBSTACLE_CLEAR) return
+    if (this.itemManager.getItemCount(this.levelCarriedItem) <= 0) return
     
+    this.itemManager.useItem(this.levelCarriedItem)
     this.obstacleCleared = true
     this.isItemMode = false
     
@@ -1460,13 +1490,13 @@ export class GameScene extends Phaser.Scene {
       return
     }
     
-    const selectedItem = this.itemManager.getSelectedItem()
+    const selectedItem = this.levelCarriedItem
     if (!selectedItem) {
       if (this.itemButton) {
-        this.itemButton.bg.destroy()
-        this.itemButton.icon.destroy()
-        this.itemButton.name.destroy()
-        this.itemButton.count.destroy()
+        if (this.itemButton.bg) this.itemButton.bg.destroy()
+        if (this.itemButton.icon) this.itemButton.icon.destroy()
+        if (this.itemButton.name) this.itemButton.name.destroy()
+        if (this.itemButton.count) this.itemButton.count.destroy()
         this.itemButton = null
       }
       return
@@ -1479,10 +1509,10 @@ export class GameScene extends Phaser.Scene {
     
     if (itemCount <= 0) {
       if (this.itemButton) {
-        this.itemButton.bg.destroy()
-        this.itemButton.icon.destroy()
-        this.itemButton.name.destroy()
-        this.itemButton.count.destroy()
+        if (this.itemButton.bg) this.itemButton.bg.destroy()
+        if (this.itemButton.icon) this.itemButton.icon.destroy()
+        if (this.itemButton.name) this.itemButton.name.destroy()
+        if (this.itemButton.count) this.itemButton.count.destroy()
         this.itemButton = null
       }
     }
